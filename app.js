@@ -502,8 +502,6 @@ function onNodeDblClick(e) {
 ═══════════════════════════════════════════════════════ */
 canvasWrap.addEventListener('pointerdown', e => {
     if (e.target !== canvasWrap && e.target !== canvasEl && e.target !== svgEl) return;
-    if (e.pointerType === 'touch' && !e.isPrimary) return; // Evita saltos de paneo con 2 dedos en móvil
-
     if (editingId) commitEdit(editingId);
     selectNode(null);
 
@@ -543,47 +541,6 @@ canvasWrap.addEventListener('wheel', e => {
     scale = newScale;
     applyTransform();
 }, { passive: false });
-
-/* Pinch-to-zoom (Móviles) */
-let initialPinchDist = null;
-let initialPinchScale = null;
-
-canvasWrap.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) {
-        e.preventDefault();
-        const dist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-        );
-        initialPinchDist = dist;
-        initialPinchScale = scale;
-    }
-}, { passive: false });
-
-canvasWrap.addEventListener('touchmove', e => {
-    if (e.touches.length === 2 && initialPinchDist) {
-        e.preventDefault();
-        const dist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-        );
-        const factor = dist / initialPinchDist;
-        const newScale = Math.min(3, Math.max(0.15, initialPinchScale * factor));
-
-        const rect = canvasWrap.getBoundingClientRect();
-        const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-        const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-
-        pan.x = cx - (cx - pan.x) * (newScale / scale);
-        pan.y = cy - (cy - pan.y) * (newScale / scale);
-        scale = newScale;
-        applyTransform();
-    }
-}, { passive: false });
-
-canvasWrap.addEventListener('touchend', e => {
-    if (e.touches.length < 2) initialPinchDist = null;
-});
 
 /* ═══════════════════════════════════════════════════════
    CENTRAR MAPA

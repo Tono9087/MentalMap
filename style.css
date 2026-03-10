@@ -163,8 +163,6 @@ body {
     inset: 0;
     overflow: hidden;
     cursor: default;
-    touch-action: none;
-    /* Crucial para evitar scroll/zoom del navegador en móvil */
 }
 
 svg#connections {
@@ -462,7 +460,6 @@ svg#connections {
 }
 
 /* ─── img-frame: el recuadro que contiene la imagen ──── */
-
 .img-frame {
     position: relative;
     overflow: hidden;
@@ -942,43 +939,4 @@ svg#connections {
 
 #btn-reset-colors:hover {
     background: rgba(128, 128, 128, 0.1);
-}
-
-/* ─── Responsividad (Móvil) ───────────── */
-@media (max-width: 768px) {
-    #toolbar {
-        top: 10px;
-        width: calc(100% - 20px);
-        max-width: 100vw;
-        overflow-x: auto;
-        justify-content: flex-start;
-        border-radius: 12px;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    #toolbar::-webkit-scrollbar {
-        display: none;
-    }
-
-    #hint {
-        display: none;
-    }
-
-    /* Ocultar hint de teclado en móvil */
-
-    .drag-handle {
-        width: 28px;
-        height: 28px;
-        /* Touch target más grande */
-        top: -16px;
-        left: -16px;
-    }
-
-    #theme-panel {
-        top: 65px;
-        left: 10px;
-        right: 10px;
-        width: auto;
-    }
 }
