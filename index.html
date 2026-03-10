@@ -171,32 +171,36 @@
         </div>
         <div class="tp-grid">
             <div class="tp-item">
-                <span>Fondo</span>
-                <div class="color-wrap">
-                    <input type="color" id="color-bg">
-                    <span class="hex-val" id="hex-bg"></span>
+                <div class="tp-item-top">
+                    <span>Fondo</span>
+                    <label class="custom-color-btn" title="Color Libre">🎨 <input type="color" id="color-bg"
+                            class="hidden-picker"></label>
                 </div>
+                <div class="swatch-container" id="swatches-bg"></div>
             </div>
             <div class="tp-item">
-                <span>Texto</span>
-                <div class="color-wrap">
-                    <input type="color" id="color-text">
-                    <span class="hex-val" id="hex-text"></span>
+                <div class="tp-item-top">
+                    <span>Texto</span>
+                    <label class="custom-color-btn" title="Color Libre">🎨 <input type="color" id="color-text"
+                            class="hidden-picker"></label>
                 </div>
+                <div class="swatch-container" id="swatches-text"></div>
             </div>
             <div class="tp-item">
-                <span>Bordes</span>
-                <div class="color-wrap">
-                    <input type="color" id="color-border">
-                    <span class="hex-val" id="hex-border"></span>
+                <div class="tp-item-top">
+                    <span>Bordes</span>
+                    <label class="custom-color-btn" title="Color Libre">🎨 <input type="color" id="color-border"
+                            class="hidden-picker"></label>
                 </div>
+                <div class="swatch-container" id="swatches-border"></div>
             </div>
             <div class="tp-item">
-                <span>Líneas</span>
-                <div class="color-wrap">
-                    <input type="color" id="color-edge">
-                    <span class="hex-val" id="hex-edge"></span>
+                <div class="tp-item-top">
+                    <span>Líneas</span>
+                    <label class="custom-color-btn" title="Color Libre">🎨 <input type="color" id="color-edge"
+                            class="hidden-picker"></label>
                 </div>
+                <div class="swatch-container" id="swatches-edge"></div>
             </div>
         </div>
         <button id="btn-reset-colors">Restaurar estilos Originales</button>

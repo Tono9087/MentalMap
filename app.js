@@ -764,19 +764,15 @@ function updateColorInputs() {
 
     const bg = rgb2hex(computed.getPropertyValue('--bg'));
     document.getElementById('color-bg').value = bg;
-    document.getElementById('hex-bg').textContent = bg;
 
     const text = rgb2hex(computed.getPropertyValue('--text'));
     document.getElementById('color-text').value = text;
-    document.getElementById('hex-text').textContent = text;
 
     const border = rgb2hex(computed.getPropertyValue('--border'));
     document.getElementById('color-border').value = border;
-    document.getElementById('hex-border').textContent = border;
 
     const edge = rgb2hex(computed.getPropertyValue('--edge'));
     document.getElementById('color-edge').value = edge;
-    document.getElementById('hex-edge').textContent = edge;
 }
 
 document.getElementById('btn-theme-panel').addEventListener('click', () => {
@@ -814,9 +810,36 @@ Object.entries(colorVars).forEach(([id, cssVar]) => {
     document.getElementById(id).addEventListener('input', e => {
         const val = e.target.value;
         htmlEl.style.setProperty(cssVar, val);
-        document.getElementById('hex-' + id.replace('color-', '')).textContent = val;
         saveCustomColors();
     });
+});
+
+/* Construir paleta de swatches rápidos para no abrir selector de SO */
+const presetPalettes = {
+    'bg': ['#f5f4f2', '#ffffff', '#eef0f8', '#212128', '#0d0d10'],
+    'text': ['#1a1a1a', '#444444', '#f0f0f6', '#4f46e5', '#ef4444'],
+    'border': ['#b0ada8', '#a4a8c8', '#5c5c6a', '#4f46e5', '#10b981'],
+    'edge': ['#8b8882', '#a4a8c8', '#7c7c92', '#8b5cf6', '#f59e0b']
+};
+
+Object.entries(presetPalettes).forEach(([key, colors]) => {
+    const container = document.getElementById(`swatches-${key}`);
+    const cssVar = colorVars[`color-${key}`];
+
+    if (container) {
+        colors.forEach(c => {
+            const swatch = document.createElement('div');
+            swatch.className = 'swatch';
+            swatch.style.background = c;
+            swatch.title = c;
+            swatch.addEventListener('click', () => {
+                htmlEl.style.setProperty(cssVar, c);
+                document.getElementById(`color-${key}`).value = c;
+                saveCustomColors();
+            });
+            container.appendChild(swatch);
+        });
+    }
 });
 
 document.getElementById('btn-reset-colors').addEventListener('click', () => {
