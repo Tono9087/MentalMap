@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MindMap — Mapa Mental</title>
+    <meta name="description"
+        content="Herramienta visual para crear mapas mentales con nodos de texto e imágenes directamente en el navegador." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <!-- ═══════════════════════════════════════
+     TOOLBAR
+════════════════════════════════════════ -->
+    <div id="toolbar" role="toolbar" aria-label="Controles del mapa mental">
+
+        <span class="tb-brand">🧠 MindMap</span>
+
+        <!-- Nodos de texto -->
+        <div class="tb-group">
+            <span class="tb-group-label">Nodos</span>
+            <button class="tb-btn" id="btn-add-circle" title="Agregar nodo circular (C)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="9" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
+                Círculo
+            </button>
+            <button class="tb-btn" id="btn-add-rect" title="Agregar nodo rectangular (R)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="7" width="18" height="10" rx="2" />
+                    <line x1="12" y1="3" x2="12" y2="7" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+                Rect.
+            </button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <!-- Marcos de imagen -->
+        <div class="tb-group">
+            <span class="tb-group-label">Marcos</span>
+            <button class="tb-btn tb-frame" id="btn-add-img-circle" title="Marco circular de imagen (I)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 16l5-5 4 4 3-3 6 6" />
+                </svg>
+                Círculo
+            </button>
+            <button class="tb-btn tb-frame" id="btn-add-img-square" title="Marco cuadrado de imagen">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="3" width="18" height="18" rx="3" />
+                    <path d="M3 16l5-5 4 4 3-3 6 6" />
+                </svg>
+                Cuadrado
+            </button>
+            <button class="tb-btn tb-frame" id="btn-add-img-rect" title="Marco panorámico de imagen">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <path d="M2 16l6-5 4 4 3-3 7 6" />
+                </svg>
+                Panorama
+            </button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <!-- Herramientas -->
+        <button class="tb-btn" id="btn-center" title="Centrar mapa (Ctrl+0)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+            </svg>
+            Centrar
+        </button>
+
+        <div class="tb-sep"></div>
+
+        <button class="tb-btn" id="btn-theme-panel" title="Personalizar Colores">🎨 Colores</button>
+
+        <div class="tb-sep"></div>
+
+        <button class="tb-btn" id="btn-export-png" title="Exportar como Imagen PNG">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            Exportar PNG
+        </button>
+        <button class="tb-btn" id="btn-export-json" title="Guardar proyecto (JSON)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Guardar
+        </button>
+        <button class="tb-btn" id="btn-import" title="Abrir proyecto (JSON)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Abrir
+        </button>
+
+        <div class="tb-sep"></div>
+
+        <!-- Tema -->
+        <div class="tb-theme-wrap" title="Alternar modo oscuro">
+            <span class="theme-sun">☀️</span>
+            <button id="btn-theme" aria-label="Alternar modo oscuro"></button>
+            <span class="theme-moon">🌙</span>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════
+     CANVAS
+════════════════════════════════════════ -->
+    <div id="canvas-wrap">
+        <svg id="connections" aria-hidden="true"></svg>
+        <div id="canvas"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+     CONTEXT PANEL
+════════════════════════════════════════ -->
+    <div id="ctx-panel" role="menu" aria-label="Opciones del nodo seleccionado">
+        <button class="ctx-btn" id="ctx-add-circle">＋ Círculo</button>
+        <button class="ctx-btn" id="ctx-add-rect">＋ Rect.</button>
+        <span class="ctx-sep"></span>
+        <button class="ctx-btn ctx-frame" id="ctx-add-img-circle">🖼 Circular</button>
+        <button class="ctx-btn ctx-frame" id="ctx-add-img-square">🖼 Cuadrado</button>
+        <button class="ctx-btn ctx-frame" id="ctx-add-img-rect">🖼 Panorama</button>
+        <span class="ctx-sep"></span>
+        <button class="ctx-btn ctx-danger" id="ctx-delete">🗑 Borrar</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+     HIDDEN INPUTS
+════════════════════════════════════════ -->
+    <input type="file" id="img-file-input" accept="image/*" style="display:none" aria-hidden="true" />
+    <input type="file" id="json-file-input" accept=".json" style="display:none" aria-hidden="true" />
+
+    <!-- ═══════════════════════════════════════
+     TOAST & HINT
+════════════════════════════════════════ -->
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <div id="hint" aria-hidden="true">
+        Clic → seleccionar &nbsp;|&nbsp; Doble clic → editar texto<br>
+        <kbd>+</kbd> sobre nodo → hijo &nbsp;|&nbsp; Arrastrar → mover &nbsp;|&nbsp;
+        Marco seleccionado + <kbd>Ctrl+V</kbd> → pegar imagen
+    </div>
+
+    <div id="theme-panel">
+        <h4>Personalizar Colores</h4>
+        <label>Fondo <input type="color" id="color-bg"></label>
+        <label>Texto <input type="color" id="color-text"></label>
+        <label>Bordes <input type="color" id="color-border"></label>
+        <label>Líneas <input type="color" id="color-edge"></label>
+        <button id="btn-reset-colors">Restaurar Original</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

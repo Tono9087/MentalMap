@@ -1,0 +1,942 @@
+/* ═══════════════════════════════════════════════════════
+   MindMap — style.css
+   Contiene: reset, variables de tema, nodos de texto,
+   marcos de imagen, toolbar, panel contextual, toast, hint.
+═══════════════════════════════════════════════════════ */
+
+/* ─── Reset ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ─── Variables de tema (claro) ──────────────────────── */
+:root {
+    --bg: #f5f4f2;
+    --surface: #ffffff;
+    --border: #b0ada8;
+    /* Antes #e0ddd8 — Ahora más oscuro/visible */
+    --text: #1a1a1a;
+    --muted: #8a8a8a;
+    --accent: #4f46e5;
+    --accent2: #7c3aed;
+    --danger: #ef4444;
+    --edge: #8b8882;
+    /* Antes #c5c2bc — Ahora más oscuro/visible */
+    --frame-bg: #eef0f8;
+    --frame-border: #a4a8c8;
+    /* Más visible */
+    --shadow: 0 4px 20px rgba(0, 0, 0, .08);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, .14);
+    --r: 12px;
+    --t: 150ms ease;
+}
+
+/* ─── Variables tema oscuro ──────────────────────────── */
+[data-theme="dark"] {
+    --bg: #0d0d10;
+    --surface: #212128;
+    --border: #5c5c6a;
+    /* Antes #3c3c46 — Ahora más claro/visible */
+    --text: #f0f0f6;
+    --muted: #a0a0b4;
+    --accent: #6366f1;
+    --accent2: #8b5cf6;
+    --danger: #f87171;
+    --edge: #7c7c92;
+    /* Antes #4a4a58 — Ahora mucho más claro/visible */
+    --frame-bg: #1e1e30;
+    --frame-border: #666688;
+    /* Más visible */
+    --shadow: 0 4px 20px rgba(0, 0, 0, .50);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, .70);
+}
+
+/* ─── Overrides de contraste en modo oscuro ───────────── */
+/* Botones de toolbar más brillantes */
+[data-theme="dark"] .tb-btn {
+    color: var(--muted);
+}
+
+[data-theme="dark"] .tb-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, .06);
+}
+
+[data-theme="dark"] .tb-btn.tb-frame {
+    color: #a5b4fc;
+}
+
+/* acento claro */
+[data-theme="dark"] .tb-btn.tb-frame:hover {
+    color: #c4b5fd;
+    background: rgba(99, 102, 241, .15);
+}
+
+[data-theme="dark"] .tb-group-label {
+    color: #7a7a9a;
+}
+
+[data-theme="dark"] .tb-brand {
+    color: var(--text);
+}
+
+/* Botones del panel contextual */
+[data-theme="dark"] .ctx-btn {
+    background: #2a2a34;
+    color: var(--text);
+}
+
+[data-theme="dark"] .ctx-btn.ctx-frame {
+    color: #a5b4fc;
+}
+
+[data-theme="dark"] .ctx-btn.ctx-danger {
+    color: #fca5a5;
+}
+
+/* Texto de nodos de texto */
+[data-theme="dark"] .node.circle,
+[data-theme="dark"] .node.rect {
+    color: var(--text);
+}
+
+/* Drag handle más visible */
+[data-theme="dark"] .drag-handle {
+    background: #2e2e3a;
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+/* Caption de marcos */
+[data-theme="dark"] .node-caption {
+    color: #d0d0e0;
+}
+
+/* Hint */
+[data-theme="dark"] #hint {
+    color: #7a7a9a;
+}
+
+[data-theme="dark"] #hint kbd {
+    background: #2e2e3a;
+    color: #c0c0d4;
+}
+
+/* ─── Transición suave de tema ───────────────────────── */
+html {
+    transition: background-color 250ms ease;
+}
+
+body,
+#toolbar,
+#ctx-panel,
+#toast,
+.node,
+.node-label,
+.tb-btn,
+.ctx-btn,
+.img-placeholder,
+.node-caption {
+    transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease, box-shadow 250ms ease;
+}
+
+/* ─── Base ───────────────────────────────────────────── */
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CANVAS
+═══════════════════════════════════════════════════════ */
+#canvas-wrap {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    cursor: default;
+}
+
+svg#connections {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+#canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   NODOS — base
+═══════════════════════════════════════════════════════ */
+.node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    cursor: grab;
+    transition: box-shadow var(--t), transform 0.18s cubic-bezier(.34, 1.3, .64, 1);
+    animation: popIn 0.26s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+
+.node:active {
+    cursor: grabbing;
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(.55);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* ─── Nodo raíz ──────────────────────────────────────── */
+.node.root {
+    width: 148px;
+    height: 148px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    box-shadow: 0 6px 28px rgba(79, 70, 229, .38);
+    z-index: 10;
+}
+
+.node.root:hover {
+    box-shadow: 0 10px 36px rgba(79, 70, 229, .50);
+}
+
+.node.root.selected {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, .45), 0 6px 28px rgba(79, 70, 229, .38);
+}
+
+.node.root .node-label {
+    pointer-events: none;
+}
+
+/* ─── Nodo círculo ───────────────────────────────────── */
+.node.circle {
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow);
+}
+
+.node.circle:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent);
+}
+
+.node.circle.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .22), var(--shadow-lg);
+}
+
+/* ─── Nodo rectángulo ────────────────────────────────── */
+.node.rect {
+    width: 136px;
+    height: 58px;
+    border-radius: var(--r);
+    background: var(--surface);
+    border: 2px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow);
+}
+
+.node.rect:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent);
+}
+
+.node.rect.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, .22), var(--shadow-lg);
+}
+
+/* ─── Label ──────────────────────────────────────────── */
+.node-label {
+    padding: 6px 10px;
+    line-height: 1.35;
+    word-break: break-word;
+    max-width: 100%;
+    pointer-events: none;
+}
+
+/* ─── Textarea de edición inline ─────────────────────── */
+.node-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    text-align: center;
+    font-family: inherit;
+    font-weight: 500;
+    resize: none;
+    width: 90%;
+    color: inherit;
+    cursor: text;
+    line-height: 1.35;
+}
+
+.node.root .node-input {
+    color: #fff;
+    font-size: 15px;
+}
+
+.node.circle .node-input,
+.node.rect .node-input {
+    font-size: 13px;
+}
+
+/* ─── Botón "+" (agregar hijo) ───────────────────────── */
+.add-btn {
+    position: absolute;
+    bottom: -14px;
+    right: -14px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 300;
+    line-height: 1;
+    border: 2.5px solid var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--t), transform var(--t), background var(--t);
+    pointer-events: auto;
+    z-index: 20;
+}
+
+.node:hover .add-btn,
+.node.selected .add-btn {
+    opacity: 1;
+}
+
+.add-btn:hover {
+    background: var(--accent2);
+    transform: scale(1.18);
+}
+
+/* ─── Botón "×" (eliminar) ───────────────────────────── */
+.del-btn {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1;
+    border: 2.5px solid var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--t), transform var(--t);
+    pointer-events: auto;
+    z-index: 20;
+}
+
+.node:not(.root):hover .del-btn,
+.node.selected:not(.root) .del-btn {
+    opacity: 1;
+}
+
+.del-btn:hover {
+    transform: scale(1.18);
+}
+
+/* ─── Botón "⠿" (mover — drag handle) ───────────────── */
+.drag-handle {
+    position: absolute;
+    top: -12px;
+    left: -12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity var(--t), transform var(--t), background var(--t), border-color var(--t);
+    pointer-events: auto;
+    z-index: 20;
+    box-shadow: var(--shadow);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.node:hover .drag-handle,
+.node.selected .drag-handle {
+    opacity: 1;
+}
+
+.drag-handle:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    transform: scale(1.12);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   MARCOS DE IMAGEN — contenedor exterior (sin clip)
+═══════════════════════════════════════════════════════ */
+.node.img-circle,
+.node.img-square,
+.node.img-rect {
+    flex-direction: column;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    gap: 6px;
+}
+
+/* Selected ring for image frames */
+.node.img-circle.selected .img-frame,
+.node.img-square.selected .img-frame,
+.node.img-rect.selected .img-frame {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+}
+
+/* ─── Marco: tamaños ─────────────────────────────────── */
+.node.img-circle {
+    width: 124px;
+    height: auto;
+}
+
+.node.img-square {
+    width: 130px;
+    height: auto;
+}
+
+.node.img-rect {
+    width: 192px;
+    height: auto;
+}
+
+/* ─── img-frame: el recuadro que contiene la imagen ──── */
+.img-frame {
+    position: relative;
+    overflow: hidden;
+    background: var(--frame-bg);
+    border: 2px solid var(--frame-border);
+    transition: border-color var(--t), box-shadow var(--t);
+    flex-shrink: 0;
+}
+
+.node.img-circle .img-frame {
+    width: 124px;
+    height: 124px;
+    border-radius: 50%;
+}
+
+.node.img-square .img-frame {
+    width: 130px;
+    height: 130px;
+    border-radius: 14px;
+}
+
+.node.img-rect .img-frame {
+    width: 192px;
+    height: 128px;
+    border-radius: 14px;
+}
+
+.node.img-circle:hover .img-frame,
+.node.img-square:hover .img-frame,
+.node.img-rect:hover .img-frame {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-lg);
+}
+
+/* ─── Imagen real ────────────────────────────────────── */
+.img-frame img.node-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+}
+
+/* ─── Placeholder (sin imagen) ───────────────────────── */
+.img-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color var(--t), background var(--t);
+}
+
+.img-placeholder:hover {
+    color: var(--accent);
+}
+
+.img-placeholder svg {
+    opacity: .55;
+}
+
+.img-placeholder span {
+    opacity: .75;
+    text-align: center;
+    line-height: 1.3;
+    padding: 0 8px;
+}
+
+/* ─── Overlay de cambio de imagen (cuando hay imagen) ── */
+.img-change-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .42);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    flex-direction: column;
+    gap: 5px;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.img-frame:hover .img-change-overlay {
+    opacity: 1;
+}
+
+/* ─── Drop-zone activa (al arrastrar imagen encima) ──── */
+.img-frame.drag-over {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, .12);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, .25);
+}
+
+/* ─── Caption (etiqueta debajo del marco) ────────────── */
+.node-caption {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: center;
+    max-width: 100%;
+    padding: 2px 4px;
+    pointer-events: none;
+}
+
+.node-caption.editing {
+    pointer-events: auto;
+}
+
+/* Caption textarea */
+.caption-input {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    outline: none;
+    text-align: center;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    resize: none;
+    width: 100px;
+    color: var(--text);
+    cursor: text;
+    padding: 3px 6px;
+    line-height: 1.3;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SVG EDGES
+═══════════════════════════════════════════════════════ */
+.edge {
+    stroke: var(--edge);
+    stroke-width: 2;
+    fill: none;
+    transition: stroke 0.25s;
+}
+
+.edge.selected {
+    stroke: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOOLBAR
+═══════════════════════════════════════════════════════ */
+#toolbar {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 48px;
+    padding: 7px 14px;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    white-space: nowrap;
+}
+
+.tb-brand {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.3px;
+    padding-right: 10px;
+    border-right: 1px solid var(--border);
+    margin-right: 2px;
+}
+
+.tb-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.tb-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--muted);
+    padding: 0 6px 0 4px;
+}
+
+.tb-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 22px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--t), color var(--t);
+    white-space: nowrap;
+}
+
+.tb-btn:hover {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.tb-btn.tb-frame {
+    color: var(--accent);
+}
+
+.tb-btn.tb-frame:hover {
+    background: rgba(99, 102, 241, .1);
+    color: var(--accent2);
+}
+
+.tb-btn svg {
+    flex-shrink: 0;
+}
+
+.tb-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+/* ─── Theme toggle ───────────────────────────────────── */
+.tb-theme-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+#btn-theme {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--border);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.3s;
+    padding: 0;
+}
+
+#btn-theme::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.3s cubic-bezier(.34, 1.4, .64, 1), background 0.3s;
+}
+
+[data-theme="dark"] #btn-theme {
+    background: var(--accent);
+}
+
+[data-theme="dark"] #btn-theme::after {
+    transform: translateX(16px);
+    background: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONTEXT PANEL
+═══════════════════════════════════════════════════════ */
+#ctx-panel {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 48px;
+    padding: 7px 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    transform: translateX(-50%) translateY(6px);
+}
+
+#ctx-panel.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.ctx-btn {
+    padding: 5px 12px;
+    border-radius: 22px;
+    border: none;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--t), color var(--t);
+    white-space: nowrap;
+}
+
+.ctx-btn:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.ctx-btn.ctx-frame {
+    color: var(--accent);
+}
+
+.ctx-btn.ctx-frame:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.ctx-btn.ctx-danger {
+    color: var(--danger);
+}
+
+.ctx-btn.ctx-danger:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+.ctx-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+#toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    padding: 9px 20px;
+    border-radius: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s, transform .3s;
+    z-index: 200;
+    box-shadow: var(--shadow-lg);
+}
+
+#toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════
+   HINT
+═══════════════════════════════════════════════════════ */
+#hint {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.75;
+    pointer-events: none;
+    text-align: right;
+}
+
+#hint kbd {
+    display: inline-block;
+    background: var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-family: inherit;
+}
+
+/* ─── Panel de Colores ───────────── */
+#theme-panel {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 15px;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity var(--t), transform var(--t);
+}
+
+#theme-panel.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+#theme-panel h4 {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+}
+
+#theme-panel label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    gap: 25px;
+    cursor: pointer;
+}
+
+#theme-panel input[type="color"] {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    outline: none;
+}
+
+#theme-panel input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+#theme-panel input[type="color"]::-webkit-color-swatch {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+#btn-reset-colors {
+    margin-top: 8px;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background var(--t);
+}
+
+#btn-reset-colors:hover {
+    background: rgba(128, 128, 128, 0.1);
+}
