@@ -761,15 +761,31 @@ function rgb2hex(val) {
 
 function updateColorInputs() {
     const computed = getComputedStyle(htmlEl);
-    document.getElementById('color-bg').value = rgb2hex(computed.getPropertyValue('--bg'));
-    document.getElementById('color-text').value = rgb2hex(computed.getPropertyValue('--text'));
-    document.getElementById('color-border').value = rgb2hex(computed.getPropertyValue('--border'));
-    document.getElementById('color-edge').value = rgb2hex(computed.getPropertyValue('--edge'));
+
+    const bg = rgb2hex(computed.getPropertyValue('--bg'));
+    document.getElementById('color-bg').value = bg;
+    document.getElementById('hex-bg').textContent = bg;
+
+    const text = rgb2hex(computed.getPropertyValue('--text'));
+    document.getElementById('color-text').value = text;
+    document.getElementById('hex-text').textContent = text;
+
+    const border = rgb2hex(computed.getPropertyValue('--border'));
+    document.getElementById('color-border').value = border;
+    document.getElementById('hex-border').textContent = border;
+
+    const edge = rgb2hex(computed.getPropertyValue('--edge'));
+    document.getElementById('color-edge').value = edge;
+    document.getElementById('hex-edge').textContent = edge;
 }
 
 document.getElementById('btn-theme-panel').addEventListener('click', () => {
     themePanel.classList.toggle('visible');
     if (themePanel.classList.contains('visible')) updateColorInputs();
+});
+
+document.getElementById('tp-close').addEventListener('click', () => {
+    themePanel.classList.remove('visible');
 });
 
 function saveCustomColors() {
@@ -796,7 +812,9 @@ function loadCustomColors(colors) {
 const colorVars = { 'color-bg': '--bg', 'color-text': '--text', 'color-border': '--border', 'color-edge': '--edge' };
 Object.entries(colorVars).forEach(([id, cssVar]) => {
     document.getElementById(id).addEventListener('input', e => {
-        htmlEl.style.setProperty(cssVar, e.target.value);
+        const val = e.target.value;
+        htmlEl.style.setProperty(cssVar, val);
+        document.getElementById('hex-' + id.replace('color-', '')).textContent = val;
         saveCustomColors();
     });
 });

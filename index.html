@@ -165,12 +165,41 @@
     </div>
 
     <div id="theme-panel">
-        <h4>Personalizar Colores</h4>
-        <label>Fondo <input type="color" id="color-bg"></label>
-        <label>Texto <input type="color" id="color-text"></label>
-        <label>Bordes <input type="color" id="color-border"></label>
-        <label>Líneas <input type="color" id="color-edge"></label>
-        <button id="btn-reset-colors">Restaurar Original</button>
+        <div class="tp-header">
+            <h4>Paleta de Colores</h4>
+            <div id="tp-close" title="Cerrar panel">✖</div>
+        </div>
+        <div class="tp-grid">
+            <div class="tp-item">
+                <span>Fondo</span>
+                <div class="color-wrap">
+                    <input type="color" id="color-bg">
+                    <span class="hex-val" id="hex-bg"></span>
+                </div>
+            </div>
+            <div class="tp-item">
+                <span>Texto</span>
+                <div class="color-wrap">
+                    <input type="color" id="color-text">
+                    <span class="hex-val" id="hex-text"></span>
+                </div>
+            </div>
+            <div class="tp-item">
+                <span>Bordes</span>
+                <div class="color-wrap">
+                    <input type="color" id="color-border">
+                    <span class="hex-val" id="hex-border"></span>
+                </div>
+            </div>
+            <div class="tp-item">
+                <span>Líneas</span>
+                <div class="color-wrap">
+                    <input type="color" id="color-edge">
+                    <span class="hex-val" id="hex-edge"></span>
+                </div>
+            </div>
+        </div>
+        <button id="btn-reset-colors">Restaurar estilos Originales</button>
     </div>
 
     <script src="app.js"></script>
