@@ -18,11 +18,13 @@
    CONSTANTES
 ═══════════════════════════════════════════════════════ */
 const IMAGE_SHAPES = new Set(['img-circle', 'img-square', 'img-rect']);
+const ROOT_SHAPES = ['root-circle', 'root-square', 'root-rect', 'root-diamond', 'root-hexagon'];
+const NODE_SIZES = ['central', 'medio', 'texto'];
 
 /* ═══════════════════════════════════════════════════════
    ESTADO GLOBAL
 ═══════════════════════════════════════════════════════ */
-let nodes = {};   // id → { id, label, x, y, shape, parentId, imageData? }
+let nodes = {};   // id → { id, label, x, y, shape, parentId, imageData?, rootShape?, nodeSize? }
 let edges = {};   // `parentId-childId` → SVGPathElement
 let nextId = 1;
 let selectedId = null;
@@ -32,6 +34,7 @@ let pan = { x: 0, y: 0 };
 let scale = 1;
 let panDragging = false;
 let panStart = null;
+let currentRootShape = 'root-circle';   // estado de forma del nódo raíz
 
 // Para el file-input de imagen: qué nodo espera la imagen
 let pendingImageNodeId = null;
@@ -45,6 +48,7 @@ const svgEl = document.getElementById('connections');
 const ctxPanel = document.getElementById('ctx-panel');
 const toastEl = document.getElementById('toast');
 const imgFileInput = document.getElementById('img-file-input');
+const rootImgFileInput = document.getElementById('root-img-file-input');
 const jsonFileInput = document.getElementById('json-file-input');
 
 /* ═══════════════════════════════════════════════════════
@@ -79,9 +83,9 @@ function toWorld(sx, sy) {
 /* ═══════════════════════════════════════════════════════
    CREACIÓN DE NODOS
 ═══════════════════════════════════════════════════════ */
-function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageData = null }) {
+function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageData = null, rootShape = null, nodeSize = null }) {
     id = id || uid();
-    const node = { id, label, x, y, shape, parentId, imageData };
+    const node = { id, label, x, y, shape, parentId, imageData, rootShape, nodeSize };
     nodes[id] = node;
 
     const el = document.createElement('div');
@@ -89,6 +93,11 @@ function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageD
     el.dataset.id = id;
     el.style.left = x + 'px';
     el.style.top = y + 'px';
+
+    /* Aplicar tamaño al nodo (no root) */
+    if (shape !== 'root' && nodeSize) {
+        el.classList.add('size-' + nodeSize);
+    }
 
     if (isImageShape(shape)) {
         buildImageNode(el, node);
@@ -158,6 +167,35 @@ function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageD
 
 /* ─── Nodo de texto ──────────────────────────────────── */
 function buildTextNode(el, node) {
+    if (node.shape === 'root') {
+        /* Aplicar forma */
+        const rs = node.rootShape || currentRootShape || 'root-circle';
+        node.rootShape = rs;
+        el.classList.add(rs);
+        currentRootShape = rs;
+
+        /* Imagen de fondo */
+        const img = document.createElement('img');
+        img.className = 'root-img';
+        img.draggable = false;
+        if (node.imageData) { img.src = node.imageData; img.style.display = 'block'; }
+        else { img.style.display = 'none'; }
+        el.appendChild(img);
+
+        /* Overlay de cambio de imagen */
+        const overlay = document.createElement('div');
+        overlay.className = 'root-img-overlay';
+        overlay.style.display = node.imageData ? 'flex' : 'none';
+        overlay.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span>Cambiar foto</span>`;
+        overlay.addEventListener('click', e => { e.stopPropagation(); triggerRootImageUpload(); });
+        el.appendChild(overlay);
+    }
+
     const lbl = document.createElement('div');
     lbl.className = 'node-label';
     lbl.textContent = node.label;
@@ -232,7 +270,20 @@ function buildImageNode(el, node) {
 /* ─── Aplicar imagen a un nodo ───────────────────────── */
 function applyImageToNode(id, dataUrl) {
     const node = nodes[id];
-    if (!node || !isImageShape(node.shape)) return;
+    if (!node) return;
+
+    if (node.shape === 'root') {
+        node.imageData = dataUrl;
+        const el = canvasEl.querySelector('[data-id="root"]');
+        if (!el) return;
+        const img = el.querySelector('.root-img');
+        const overlay = el.querySelector('.root-img-overlay');
+        if (img) { img.src = dataUrl; img.style.display = 'block'; }
+        if (overlay) { overlay.style.display = 'flex'; }
+        return;
+    }
+
+    if (!isImageShape(node.shape)) return;
     node.imageData = dataUrl;
 
     const el = canvasEl.querySelector(`[data-id="${id}"]`);
@@ -246,6 +297,22 @@ function applyImageToNode(id, dataUrl) {
     if (ph) { ph.style.display = 'none'; }
     if (overlay) { overlay.style.display = 'flex'; }
 }
+
+function triggerRootImageUpload() {
+    rootImgFileInput.value = '';
+    rootImgFileInput.click();
+}
+
+rootImgFileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = ev => applyImageToNode('root', ev.target.result);
+        reader.readAsDataURL(file);
+        toast('🖼 Imagen colocada en el nodo central');
+    }
+    e.target.value = '';
+});
 
 function triggerImageUpload(nodeId) {
     pendingImageNodeId = nodeId;
@@ -322,6 +389,13 @@ function selectNode(id) {
         const el = canvasEl.querySelector(`[data-id="${id}"]`);
         if (el) el.classList.add('selected');
         ctxPanel.classList.add('visible');
+
+        /* Sincronizar botones de tamaño */
+        const node = nodes[id];
+        const currentSize = node ? (node.nodeSize || null) : null;
+        document.querySelectorAll('.ctx-size').forEach(b => {
+            b.classList.toggle('active', b.dataset.size === currentSize);
+        });
     } else {
         ctxPanel.classList.remove('visible');
     }
@@ -723,6 +797,60 @@ document.getElementById('btn-export-json').addEventListener('click', exportJSON)
 document.getElementById('btn-import').addEventListener('click', () => jsonFileInput.click());
 jsonFileInput.addEventListener('change', importJSON);
 
+/* ─── Botón imagen en nodo raíz ──────────────────────── */
+document.getElementById('btn-root-img').addEventListener('click', () => triggerRootImageUpload());
+
+/* ─── Cambiar forma del nodo raíz ────────────────────── */
+function updateRootShapeButtons(activeShape) {
+    document.querySelectorAll('.tb-root-shape').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.shape === activeShape);
+    });
+}
+
+function changeRootShape(newShape) {
+    const rootEl = canvasEl.querySelector('[data-id="root"]');
+    const rootNode = nodes['root'];
+    if (!rootEl || !rootNode) return;
+
+    /* Quitar forma anterior */
+    ROOT_SHAPES.forEach(s => rootEl.classList.remove(s));
+
+    /* Aplicar nueva forma */
+    rootEl.classList.add(newShape);
+    rootNode.rootShape = newShape;
+    currentRootShape = newShape;
+    updateRootShapeButtons(newShape);
+
+    toast('✏️ Forma central cambiada');
+}
+
+/* Conectar botones de forma */
+document.querySelectorAll('.tb-root-shape').forEach(btn => {
+    btn.addEventListener('click', () => changeRootShape(btn.dataset.shape));
+});
+
+/* ─── Cambiar tamaño de nodo seleccionado ────────────── */
+function changeNodeSize(size) {
+    if (!selectedId || selectedId === 'root') return;
+    const node = nodes[selectedId];
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el || !node) return;
+
+    /* Quitar tamaños anteriores */
+    NODE_SIZES.forEach(s => el.classList.remove('size-' + s));
+
+    /* Aplicar nuevo */
+    el.classList.add('size-' + size);
+    node.nodeSize = size;
+
+    /* Actualizar botón activo en el ctx-panel */
+    document.querySelectorAll('.ctx-size').forEach(b => {
+        b.classList.toggle('active', b.dataset.size === size);
+    });
+
+    updateAllEdges();
+}
+
 /* ═══════════════════════════════════════════════════════
    EVENTOS DE PANEL CONTEXTUAL
 ═══════════════════════════════════════════════════════ */
@@ -734,6 +862,11 @@ document.getElementById('ctx-add-img-rect').addEventListener('click', () => { if
 document.getElementById('ctx-delete').addEventListener('click', () => {
     if (selectedId && selectedId !== 'root') deleteNode(selectedId);
     else toast('⚠️ No se puede eliminar el nodo raíz');
+});
+
+/* Botones de tamaño */
+document.querySelectorAll('.ctx-size').forEach(btn => {
+    btn.addEventListener('click', () => changeNodeSize(btn.dataset.size));
 });
 
 /* ═══════════════════════════════════════════════════════
@@ -1000,8 +1133,10 @@ function init() {
         y: 0,
         shape: 'root',
         parentId: null,
+        rootShape: 'root-circle',
     });
 
+    updateRootShapeButtons('root-circle');
     toast('🧠 ¡Bienvenido! Doble clic para editar · + para agregar nodos · Marcos de imagen con I', 4000);
 }
 
