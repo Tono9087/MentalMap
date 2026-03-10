@@ -895,6 +895,99 @@ window.addEventListener('keydown', e => {
 });
 
 /* ═══════════════════════════════════════════════════════
+   GENERAR MAPA DESDE TEXTO TABULADO
+═══════════════════════════════════════════════════════ */
+const textModal = document.getElementById('text-modal');
+const textOverlay = document.getElementById('text-modal-overlay');
+
+document.getElementById('btn-text-to-map').addEventListener('click', () => {
+    textModal.classList.add('visible');
+    textOverlay.classList.add('visible');
+    document.getElementById('tm-textarea').focus();
+});
+
+function closeTextModal() {
+    textModal.classList.remove('visible');
+    textOverlay.classList.remove('visible');
+}
+
+document.getElementById('tm-close').addEventListener('click', closeTextModal);
+textOverlay.addEventListener('click', closeTextModal);
+
+function randomPositionAround(px, py, radius) {
+    const angle = Math.random() * Math.PI * 2;
+    return {
+        x: px + Math.round(Math.cos(angle) * radius),
+        y: py + Math.round(Math.sin(angle) * (radius * 0.8)) // Óvalo un poco achatado
+    };
+}
+
+document.getElementById('btn-run-text-to-map').addEventListener('click', () => {
+    const textVal = document.getElementById('tm-textarea').value;
+    if (!textVal.trim()) { toast('⚠️ El texto está vacío'); return; }
+
+    // Limpiar líneas y deducir cantidad de sangría inicial
+    const rawLines = textVal.split('\n');
+    const lines = [];
+
+    for (let l of rawLines) {
+        if (l.trim() === '') continue; // ignorar vacías
+        // contar espacios (1 tab = 4 espacios)
+        let spaces = 0;
+        for (let char of l) {
+            if (char === ' ') spaces += 1;
+            else if (char === '\t') spaces += 4;
+            else break;
+        }
+        lines.push({
+            indent: spaces,
+            label: l.trim()
+        });
+    }
+
+    if (lines.length === 0) return;
+
+    const newNodes = [];
+    const stack = [];
+    let currentNextId = 1;
+
+    lines.forEach((lineObj, index) => {
+        const id = index === 0 ? 'root' : 'node_gen_' + currentNextId++;
+        const shape = index === 0 ? 'root' : 'rect';
+        let parentId = null;
+        let x = 0;
+        let y = 0;
+
+        if (index === 0) {
+            stack.push({ indent: lineObj.indent - 1, id: id, x: 0, y: 0 }); // Base root
+        } else {
+            // Eliminar de la pila los que tienen nivel o mismo nivel, para encontrar el padre 
+            while (stack.length > 1 && stack[stack.length - 1].indent >= lineObj.indent) {
+                stack.pop();
+            }
+
+            const parent = stack.length > 0 ? stack[stack.length - 1] : stack[0];
+            parentId = parent.id;
+
+            // Posicionar con ligera aleatoriedad alrededor del padre
+            const radius = 180 + (Math.random() * 50);
+            const pos = randomPositionAround(parent.x, parent.y, radius);
+            x = pos.x;
+            y = pos.y;
+
+            stack.push({ indent: lineObj.indent, id: id, x: x, y: y });
+        }
+
+        newNodes.push({ id, label: lineObj.label, x, y, shape, parentId });
+    });
+
+    closeTextModal();
+    // Reusamos tu propia función para cargar los nuevos datos y auto-centrar
+    loadFromData({ nodes: newNodes, nextId: Date.now() });
+    toast('✅ ¡Mapa Generado con Éxito!');
+});
+
+/* ═══════════════════════════════════════════════════════
    INICIALIZACIÓN
 ═══════════════════════════════════════════════════════ */
 function init() {
