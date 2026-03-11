@@ -665,37 +665,42 @@ function exportJSON() {
     toast(`✅ Proyecto guardado (tema ${label})`);
 }
 
-function exportPNG() {
-    toast('⏳ Preparando imagen PNG...');
-
-    // Ocultar UI que no debe salir en la foto
+function hideUIForExport() {
     document.getElementById('toolbar').style.display = 'none';
     document.getElementById('ctx-panel').classList.remove('visible');
     document.getElementById('theme-panel').classList.remove('visible');
+    closeExportDropdown();
     const oldSel = selectedId;
     if (selectedId) selectNode(null);
+    return oldSel;
+}
 
-    // Cargar html2canvas on-demand
-    if (!window.html2canvas) {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        script.onload = () => doExportPNG(oldSel);
-        document.head.appendChild(script);
-    } else {
-        doExportPNG(oldSel);
-    }
+function restoreUIAfterExport(oldSel) {
+    document.getElementById('toolbar').style.display = '';
+    if (oldSel) selectNode(oldSel);
+}
+
+function loadHtml2Canvas(cb) {
+    if (window.html2canvas) { cb(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = cb;
+    document.head.appendChild(script);
+}
+
+function exportPNG() {
+    toast('⏳ Preparando imagen PNG...');
+    const oldSel = hideUIForExport();
+    loadHtml2Canvas(() => doExportPNG(oldSel));
 }
 
 function doExportPNG(oldSel) {
     const wrapper = document.getElementById('canvas-wrap');
     html2canvas(wrapper, {
         backgroundColor: getComputedStyle(document.body).backgroundColor,
-        scale: 2 // Alta calidad
+        scale: 2
     }).then(canvas => {
-        // Restaurar UI
-        document.getElementById('toolbar').style.display = '';
-        if (oldSel) selectNode(oldSel);
-
+        restoreUIAfterExport(oldSel);
         try {
             const dataUrl = canvas.toDataURL('image/png');
             const a = Object.assign(document.createElement('a'), { href: dataUrl, download: 'mapa-mental.png' });
@@ -705,6 +710,54 @@ function doExportPNG(oldSel) {
             toast('🖼 Imagen PNG exportada con éxito');
         } catch (e) {
             toast('❌ Error guardando imagen');
+        }
+    });
+}
+
+function exportPDF() {
+    toast('⏳ Preparando PDF...');
+    const oldSel = hideUIForExport();
+    loadHtml2Canvas(() => doExportPDF(oldSel));
+}
+
+function doExportPDF(oldSel) {
+    const wrapper = document.getElementById('canvas-wrap');
+    html2canvas(wrapper, {
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        scale: 2
+    }).then(canvas => {
+        restoreUIAfterExport(oldSel);
+        try {
+            const imgData = canvas.toDataURL('image/png');
+            const imgW = canvas.width;
+            const imgH = canvas.height;
+
+            // Cargar jsPDF on-demand
+            function makePDF() {
+                const { jsPDF } = window.jspdf;
+                const orientation = imgW >= imgH ? 'landscape' : 'portrait';
+                const pdf = new jsPDF({
+                    orientation,
+                    unit: 'px',
+                    format: [imgW / 2, imgH / 2],
+                    hotfixes: ['px_scaling']
+                });
+                pdf.addImage(imgData, 'PNG', 0, 0, imgW / 2, imgH / 2);
+                pdf.save('mapa-mental.pdf');
+                toast('📄 PDF exportado con éxito');
+            }
+
+            if (window.jspdf) {
+                makePDF();
+            } else {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = makePDF;
+                script.onerror = () => toast('❌ No se pudo cargar jsPDF');
+                document.head.appendChild(script);
+            }
+        } catch (e) {
+            toast('❌ Error generando PDF');
         }
     });
 }
@@ -805,10 +858,37 @@ document.getElementById('btn-add-img-square').addEventListener('click', () => ad
 document.getElementById('btn-add-img-rect').addEventListener('click', () => addToSelected('img-rect'));
 
 document.getElementById('btn-center').addEventListener('click', () => { centerMap(); toast('📐 Mapa centrado'); });
-document.getElementById('btn-export-png').addEventListener('click', exportPNG);
 document.getElementById('btn-export-json').addEventListener('click', exportJSON);
 document.getElementById('btn-import').addEventListener('click', () => jsonFileInput.click());
 jsonFileInput.addEventListener('change', importJSON);
+
+/* ─── Export dropdown toggle ────────────────────────────── */
+const exportWrap = document.getElementById('export-wrap');
+const exportDropdown = document.getElementById('export-dropdown');
+
+function openExportDropdown() { exportWrap.classList.add('open'); }
+function closeExportDropdown() { exportWrap.classList.remove('open'); }
+function toggleExportDropdown() { exportWrap.classList.toggle('open'); }
+
+document.getElementById('btn-export').addEventListener('click', e => {
+    e.stopPropagation();
+    toggleExportDropdown();
+});
+
+document.getElementById('btn-export-png').addEventListener('click', () => {
+    closeExportDropdown();
+    exportPNG();
+});
+
+document.getElementById('btn-export-pdf').addEventListener('click', () => {
+    closeExportDropdown();
+    exportPDF();
+});
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', e => {
+    if (!exportWrap.contains(e.target)) closeExportDropdown();
+});
 
 /* ─── Botón imagen en nodo raíz ──────────────────────── */
 document.getElementById('btn-root-img').addEventListener('click', () => triggerRootImageUpload());
