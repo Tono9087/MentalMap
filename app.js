@@ -262,14 +262,27 @@ function loadFileIntoNode(nodeId, file) {
 /* ═══════════════════════════════════════════════════════
    ARISTAS SVG
 ═══════════════════════════════════════════════════════ */
+function getNodeCenter(id) {
+    const el = canvasEl.querySelector(`[data-id="${id}"]`);
+    if (el) {
+        const r = el.getBoundingClientRect();
+        // Convert screen center to world coordinates
+        return toWorld(r.left + r.width / 2, r.top + r.height / 2);
+    }
+    // Fallback to stored coords (already world-space center)
+    const n = nodes[id];
+    return n ? { x: n.x, y: n.y } : { x: 0, y: 0 };
+}
+
 function updateEdge(fromId, toId) {
     const key = `${fromId}-${toId}`;
     const path = edges[key];
     if (!path) return;
 
-    const f = nodes[fromId];
-    const t = nodes[toId];
-    if (!f || !t) return;
+    if (!nodes[fromId] || !nodes[toId]) return;
+
+    const f = getNodeCenter(fromId);
+    const t = getNodeCenter(toId);
 
     const dx = t.x - f.x;
     const cx1 = f.x + dx * 0.45;
