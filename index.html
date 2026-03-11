@@ -23,6 +23,25 @@
 
         <span class="tb-brand">🧠 MindMap</span>
 
+        <!-- Forma central -->
+        <div class="tb-group">
+            <span class="tb-group-label">Central</span>
+            <button class="tb-btn tb-root-shape" id="root-shape-circle" title="Forma: Círculo" data-shape="root-circle">⬤</button>
+            <button class="tb-btn tb-root-shape" id="root-shape-square" title="Forma: Cuadrado" data-shape="root-square">■</button>
+            <button class="tb-btn tb-root-shape" id="root-shape-rect"   title="Forma: Rectángulo" data-shape="root-rect">▬</button>
+            <button class="tb-btn tb-root-shape" id="root-shape-diamond" title="Forma: Diamante" data-shape="root-diamond">◆</button>
+            <button class="tb-btn tb-root-shape" id="root-shape-hexagon" title="Forma: Hexágono" data-shape="root-hexagon">⬡</button>
+            <button class="tb-btn tb-frame" id="btn-root-img" title="Imagen en nodo central">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 16l5-5 4 4 3-3 6 6" />
+                </svg>
+                🖼 Foto
+            </button>
+        </div>
+
+        <div class="tb-sep"></div>
+
         <!-- Nodos de texto -->
         <div class="tb-group">
             <span class="tb-group-label">Nodos</span>
@@ -154,6 +173,11 @@
         <button class="ctx-btn ctx-frame" id="ctx-add-img-square">🖼 Cuadrado</button>
         <button class="ctx-btn ctx-frame" id="ctx-add-img-rect">🖼 Panorama</button>
         <span class="ctx-sep"></span>
+        <span class="ctx-label">Tamaño:</span>
+        <button class="ctx-btn ctx-size" id="ctx-size-central" data-size="central" title="Tamaño Central">⬤ Grande</button>
+        <button class="ctx-btn ctx-size" id="ctx-size-medio"   data-size="medio"   title="Tamaño Medio">◉ Medio</button>
+        <button class="ctx-btn ctx-size" id="ctx-size-texto"   data-size="texto"   title="Tamaño Texto">◎ Texto</button>
+        <span class="ctx-sep"></span>
         <button class="ctx-btn ctx-danger" id="ctx-delete">🗑 Borrar</button>
     </div>
 
@@ -161,6 +185,7 @@
      HIDDEN INPUTS
 ════════════════════════════════════════ -->
     <input type="file" id="img-file-input" accept="image/*" style="display:none" aria-hidden="true" />
+    <input type="file" id="root-img-file-input" accept="image/*" style="display:none" aria-hidden="true" />
     <input type="file" id="json-file-input" accept=".json" style="display:none" aria-hidden="true" />
 
     <!-- ═══════════════════════════════════════

@@ -19,21 +19,39 @@
     --bg: #f5f4f2;
     --surface: #ffffff;
     --border: #b0ada8;
-    /* Antes #e0ddd8 — Ahora más oscuro/visible */
     --text: #1a1a1a;
     --muted: #8a8a8a;
     --accent: #4f46e5;
     --accent2: #7c3aed;
     --danger: #ef4444;
     --edge: #8b8882;
-    /* Antes #c5c2bc — Ahora más oscuro/visible */
     --frame-bg: #eef0f8;
     --frame-border: #a4a8c8;
-    /* Más visible */
     --shadow: 0 4px 20px rgba(0, 0, 0, .08);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, .14);
     --r: 12px;
     --t: 150ms ease;
+
+    /* ── Tamaños de nodo ─────────────────────── */
+    /* Tamaño Central (root / grande) */
+    --sz-central: 160px;
+    --sz-central-r: 160px;
+    /* rect: w */
+    --sz-central-rh: 72px;
+    /* rect: h */
+    --sz-central-fs: 16px;
+
+    /* Tamaño Medio */
+    --sz-medio: 110px;
+    --sz-medio-r: 138px;
+    --sz-medio-rh: 58px;
+    --sz-medio-fs: 13px;
+
+    /* Tamaño Texto (pequeño) */
+    --sz-texto: 80px;
+    --sz-texto-r: 108px;
+    --sz-texto-rh: 44px;
+    --sz-texto-fs: 11px;
 }
 
 /* ─── Variables tema oscuro ──────────────────────────── */
@@ -217,17 +235,18 @@ svg#connections {
     }
 }
 
-/* ─── Nodo raíz ──────────────────────────────────────── */
+/* ─── Nodo raíz — base ───────────────────────────────── */
 .node.root {
-    width: 148px;
-    height: 148px;
+    width: var(--sz-central);
+    height: var(--sz-central);
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     color: #fff;
     font-weight: 600;
-    font-size: 15px;
+    font-size: var(--sz-central-fs);
     box-shadow: 0 6px 28px rgba(79, 70, 229, .38);
     z-index: 10;
+    overflow: hidden;
 }
 
 .node.root:hover {
@@ -240,16 +259,110 @@ svg#connections {
 
 .node.root .node-label {
     pointer-events: none;
+    position: relative;
+    z-index: 2;
+}
+
+/* ─── Variantes de forma del nodo raíz ───────────────── */
+.node.root.root-circle {
+    border-radius: 50%;
+}
+
+.node.root.root-square {
+    border-radius: 18px;
+}
+
+.node.root.root-rect {
+    width: var(--sz-central-r);
+    height: var(--sz-central-rh);
+    border-radius: 18px;
+}
+
+.node.root.root-diamond {
+    border-radius: 18px;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.node.root.root-diamond .node-label,
+.node.root.root-diamond .node-input,
+.node.root.root-diamond .root-img-overlay,
+.node.root.root-diamond .root-img {
+    transform: rotate(-45deg);
+}
+
+.node.root.root-diamond.selected {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, .45), 0 6px 28px rgba(79, 70, 229, .38);
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.node.root.root-hexagon {
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* ─── Imagen dentro del nodo raíz ────────────────────── */
+.root-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.root-img-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(0, 0, 0, .40);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    z-index: 3;
+    pointer-events: auto;
+}
+
+.node.root:hover .root-img-overlay {
+    opacity: 1;
+}
+
+.root-img-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    color: rgba(255, 255, 255, .7);
+    font-size: 11px;
+    cursor: pointer;
+    z-index: 3;
+    pointer-events: auto;
+    transition: color 0.2s;
+}
+
+.root-img-placeholder:hover {
+    color: #fff;
 }
 
 /* ─── Nodo círculo ───────────────────────────────────── */
 .node.circle {
-    width: 108px;
-    height: 108px;
+    width: var(--sz-medio);
+    height: var(--sz-medio);
     border-radius: 50%;
     background: var(--surface);
     border: 2px solid var(--border);
-    font-size: 13px;
+    font-size: var(--sz-medio-fs);
     font-weight: 500;
     box-shadow: var(--shadow);
 }
@@ -266,12 +379,12 @@ svg#connections {
 
 /* ─── Nodo rectángulo ────────────────────────────────── */
 .node.rect {
-    width: 136px;
-    height: 58px;
+    width: var(--sz-medio-r);
+    height: var(--sz-medio-rh);
     border-radius: var(--r);
     background: var(--surface);
     border: 2px solid var(--border);
-    font-size: 13px;
+    font-size: var(--sz-medio-fs);
     font-weight: 500;
     box-shadow: var(--shadow);
 }
@@ -284,6 +397,105 @@ svg#connections {
 .node.rect.selected {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, .22), var(--shadow-lg);
+}
+
+/* ═══════════════════════════════════════════════════════
+   TAMAÑOS DE NODO — modificadores
+═══════════════════════════════════════════════════════ */
+/* Tamaño Central */
+.node.circle.size-central {
+    width: var(--sz-central);
+    height: var(--sz-central);
+    font-size: var(--sz-central-fs);
+}
+
+.node.rect.size-central {
+    width: var(--sz-central-r);
+    height: var(--sz-central-rh);
+    font-size: var(--sz-central-fs);
+}
+
+/* Tamaño Medio (default) */
+.node.circle.size-medio {
+    width: var(--sz-medio);
+    height: var(--sz-medio);
+    font-size: var(--sz-medio-fs);
+}
+
+.node.rect.size-medio {
+    width: var(--sz-medio-r);
+    height: var(--sz-medio-rh);
+    font-size: var(--sz-medio-fs);
+}
+
+/* Tamaño Texto */
+.node.circle.size-texto {
+    width: var(--sz-texto);
+    height: var(--sz-texto);
+    font-size: var(--sz-texto-fs);
+}
+
+.node.rect.size-texto {
+    width: var(--sz-texto-r);
+    height: var(--sz-texto-rh);
+    font-size: var(--sz-texto-fs);
+}
+
+/* Marcos de imagen — tamaños ─────────────────────────── */
+.node.img-circle.size-central .img-frame,
+.node.img-circle.size-central {
+    width: 160px;
+}
+
+.node.img-circle.size-central .img-frame {
+    width: 160px;
+    height: 160px;
+}
+
+.node.img-square.size-central .img-frame {
+    width: 160px;
+    height: 160px;
+}
+
+.node.img-square.size-central {
+    width: 160px;
+}
+
+.node.img-rect.size-central .img-frame {
+    width: 230px;
+    height: 154px;
+}
+
+.node.img-rect.size-central {
+    width: 230px;
+}
+
+.node.img-circle.size-texto .img-frame,
+.node.img-circle.size-texto {
+    width: 80px;
+}
+
+.node.img-circle.size-texto .img-frame {
+    width: 80px;
+    height: 80px;
+}
+
+.node.img-square.size-texto .img-frame {
+    width: 85px;
+    height: 85px;
+}
+
+.node.img-square.size-texto {
+    width: 85px;
+}
+
+.node.img-rect.size-texto .img-frame {
+    width: 130px;
+    height: 86px;
+}
+
+.node.img-rect.size-texto {
+    width: 130px;
 }
 
 /* ─── Label ──────────────────────────────────────────── */
@@ -312,12 +524,14 @@ svg#connections {
 
 .node.root .node-input {
     color: #fff;
-    font-size: 15px;
+    font-size: var(--sz-central-fs);
+    position: relative;
+    z-index: 5;
 }
 
 .node.circle .node-input,
 .node.rect .node-input {
-    font-size: 13px;
+    font-size: inherit;
 }
 
 /* ─── Botón "+" (agregar hijo) ───────────────────────── */
@@ -813,6 +1027,51 @@ svg#connections {
     height: 16px;
     background: var(--border);
     flex-shrink: 0;
+}
+
+.ctx-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--muted);
+    padding: 0 4px;
+    white-space: nowrap;
+}
+
+/* Botones de tamaño */
+.ctx-btn.ctx-size {
+    color: var(--muted);
+    font-size: 11.5px;
+}
+
+.ctx-btn.ctx-size:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.ctx-btn.ctx-size.active {
+    background: rgba(99, 102, 241, .15);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Botones de forma root activo */
+.tb-btn.tb-root-shape {
+    font-size: 13px;
+    padding: 6px 10px;
+    color: var(--muted);
+}
+
+.tb-btn.tb-root-shape:hover {
+    color: var(--accent);
+    background: rgba(99, 102, 241, .08);
+}
+
+.tb-btn.tb-root-shape.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 50%;
 }
 
 /* ═══════════════════════════════════════════════════════
