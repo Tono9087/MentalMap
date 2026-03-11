@@ -747,14 +747,20 @@ function doExportPDF(oldSel) {
             // Cargar jsPDF on-demand
             function makePDF() {
                 const { jsPDF } = window.jspdf;
-                const orientation = imgW >= imgH ? 'landscape' : 'portrait';
+
+                // canvas tiene scale:2, así que el contenido real = canvas px / 2
+                // Convertir a mm: 1px a 96dpi = 25.4/96 mm
+                const PX_TO_MM = 25.4 / 96;
+                const wMm = (imgW / 2) * PX_TO_MM;
+                const hMm = (imgH / 2) * PX_TO_MM;
+
+                const orientation = wMm >= hMm ? 'landscape' : 'portrait';
                 const pdf = new jsPDF({
                     orientation,
-                    unit: 'px',
-                    format: [imgW / 2, imgH / 2],
-                    hotfixes: ['px_scaling']
+                    unit: 'mm',
+                    format: [wMm, hMm]
                 });
-                pdf.addImage(imgData, 'PNG', 0, 0, imgW / 2, imgH / 2);
+                pdf.addImage(imgData, 'PNG', 0, 0, wMm, hMm, '', 'FAST');
                 pdf.save('mapa-mental.pdf');
                 toast('📄 PDF exportado con éxito');
             }
