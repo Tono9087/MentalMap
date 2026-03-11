@@ -207,6 +207,95 @@
     </div>
 
     <!-- ═══════════════════════════════════════
+     NODE PROPERTIES PANEL (left side)
+════════════════════════════════════════ -->
+    <div id="node-props" aria-label="Propiedades del nodo">
+        <div class="np-header">
+            <span class="np-title">⚙️ Propiedades</span>
+            <button class="np-close" id="np-close" title="Cerrar">✖</button>
+        </div>
+
+        <!-- Color de fondo -->
+        <div class="np-section">
+            <span class="np-label">Color de fondo</span>
+            <div class="np-color-row">
+                <label class="np-color-swatch-input" title="Color libre">
+                    <input type="color" id="np-bg-color">
+                    <span class="np-color-preview" id="np-bg-preview"></span>
+                </label>
+                <div class="np-swatches" id="np-bg-swatches"></div>
+            </div>
+        </div>
+
+        <!-- Color de texto -->
+        <div class="np-section">
+            <span class="np-label">Color de texto</span>
+            <div class="np-color-row">
+                <label class="np-color-swatch-input" title="Color libre">
+                    <input type="color" id="np-text-color">
+                    <span class="np-color-preview" id="np-text-preview"></span>
+                </label>
+                <div class="np-swatches" id="np-text-swatches"></div>
+            </div>
+        </div>
+
+        <!-- Color de borde -->
+        <div class="np-section">
+            <span class="np-label">Color de borde</span>
+            <div class="np-color-row">
+                <label class="np-color-swatch-input" title="Color libre">
+                    <input type="color" id="np-border-color">
+                    <span class="np-color-preview" id="np-border-preview"></span>
+                </label>
+                <div class="np-swatches" id="np-border-swatches"></div>
+            </div>
+        </div>
+
+        <!-- Tamaño del nodo -->
+        <div class="np-section">
+            <span class="np-label">Tamaño del nodo (px)</span>
+            <div class="np-slider-row">
+                <input type="range" id="np-node-size" min="50" max="260" step="5" value="110">
+                <span class="np-slider-val" id="np-node-size-val">110</span>
+            </div>
+        </div>
+
+        <!-- Tamaño de fuente -->
+        <div class="np-section">
+            <span class="np-label">Tamaño de fuente (px)</span>
+            <div class="np-slider-row">
+                <input type="range" id="np-font-size" min="8" max="36" step="1" value="13">
+                <span class="np-slider-val" id="np-font-size-val">13</span>
+            </div>
+        </div>
+
+        <!-- Fuente -->
+        <div class="np-section">
+            <span class="np-label">Fuente</span>
+            <select id="np-font-family" class="np-select">
+                <option value="'Inter', sans-serif">Inter (default)</option>
+                <option value="'Georgia', serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="'Arial', sans-serif">Arial</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                <option value="'Verdana', sans-serif">Verdana</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="'Brush Script MT', cursive">Brush Script</option>
+            </select>
+        </div>
+
+        <!-- Estilo de texto -->
+        <div class="np-section">
+            <span class="np-label">Estilo de texto</span>
+            <div class="np-style-row">
+                <button class="np-style-btn" id="np-bold" title="Negrita"><b>B</b></button>
+                <button class="np-style-btn" id="np-italic" title="Cursiva"><i>I</i></button>
+                <button class="np-style-btn" id="np-underline" title="Subrayado"><u>U</u></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
      HIDDEN INPUTS
 ════════════════════════════════════════ -->
     <input type="file" id="img-file-input" accept="image/*" style="display:none" aria-hidden="true" />

@@ -83,9 +83,14 @@ function toWorld(sx, sy) {
 /* ═══════════════════════════════════════════════════════
    CREACIÓN DE NODOS
 ═══════════════════════════════════════════════════════ */
-function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageData = null, rootShape = null, nodeSize = null }) {
+function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageData = null, rootShape = null, nodeSize = null,
+    nodeColor = null, nodeTextColor = null, nodeBorderColor = null,
+    nodeFontSize = null, nodeFontFamily = null,
+    nodeFontBold = false, nodeFontItalic = false, nodeFontUnderline = false }) {
     id = id || uid();
-    const node = { id, label, x, y, shape, parentId, imageData, rootShape, nodeSize };
+    const node = { id, label, x, y, shape, parentId, imageData, rootShape, nodeSize,
+        nodeColor, nodeTextColor, nodeBorderColor, nodeFontSize, nodeFontFamily,
+        nodeFontBold, nodeFontItalic, nodeFontUnderline };
     nodes[id] = node;
 
     const el = document.createElement('div');
@@ -104,6 +109,9 @@ function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageD
     } else {
         buildTextNode(el, node);
     }
+
+    /* Aplicar estilos personalizados del nodo */
+    applyNodeStyles(el, node);
 
     /* Botón agregar hijo */
     const addBtn = document.createElement('div');
@@ -409,8 +417,12 @@ function selectNode(id) {
         document.querySelectorAll('.ctx-size').forEach(b => {
             b.classList.toggle('active', b.dataset.size === currentSize);
         });
+
+        /* Mostrar y sincronizar el panel de propiedades */
+        syncPropsPanel(id);
     } else {
         ctxPanel.classList.remove('visible');
+        hidePropsPanel();
     }
 }
 
@@ -1234,3 +1246,286 @@ function init() {
 }
 
 init();
+
+/* ═══════════════════════════════════════════════════════
+   NODE PROPERTIES PANEL
+═══════════════════════════════════════════════════════ */
+
+const nodePropsEl = document.getElementById('node-props');
+
+/* ─── Apply per-node styles to DOM element ───────────── */
+function applyNodeStyles(el, node) {
+    if (!el || !node) return;
+    const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
+
+    if (node.nodeColor)       el.style.background = node.nodeColor;
+    if (node.nodeTextColor && lbl)  lbl.style.color = node.nodeTextColor;
+    if (node.nodeBorderColor) { el.style.borderColor = node.nodeBorderColor; }
+    if (node.nodeFontSize && lbl)   lbl.style.fontSize = node.nodeFontSize + 'px';
+    if (node.nodeFontFamily && lbl) lbl.style.fontFamily = node.nodeFontFamily;
+    if (lbl) {
+        lbl.style.fontWeight    = node.nodeFontBold      ? '700' : '';
+        lbl.style.fontStyle     = node.nodeFontItalic    ? 'italic' : '';
+        lbl.style.textDecoration = node.nodeFontUnderline ? 'underline' : '';
+    }
+    // Size override (px-level, bypasses CSS class sizes)
+    if (node.nodeCustomSize) {
+        if (node.shape === 'circle' || node.shape === 'root') {
+            el.style.width  = node.nodeCustomSize + 'px';
+            el.style.height = node.nodeCustomSize + 'px';
+        } else if (node.shape === 'rect') {
+            el.style.width  = node.nodeCustomSize + 'px';
+            el.style.height = Math.round(node.nodeCustomSize * 0.45) + 'px';
+        }
+    }
+}
+
+/* Helper: read a computed color as hex */
+function computedHex(el, prop) {
+    if (!el) return '#ffffff';
+    const val = el.style[prop] || getComputedStyle(el)[prop] || '';
+    if (!val) return '#ffffff';
+    if (val.startsWith('#')) return val.substring(0, 7);
+    const m = val.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (m) {
+        const h = x => ('0' + parseInt(x).toString(16)).slice(-2);
+        return '#' + h(m[1]) + h(m[2]) + h(m[3]);
+    }
+    return '#ffffff';
+}
+
+/* Helper: sync color preview span to actual color input value */
+function syncPreview(previewId, colorVal) {
+    const el = document.getElementById(previewId);
+    if (el) el.style.background = colorVal;
+}
+
+/* ─── Palettes for the panel swatches ───────────────── */
+const NP_PALETTES = {
+    bg: ['#ffffff', '#f0f4ff', '#fffbe6', '#fce7f3', '#e0fce0',
+         '#1a1a2e', '#4f46e5', '#7c3aed', '#ef4444', '#10b981'],
+    text: ['#1a1a1a', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
+           '#f59e0b', '#ffffff', '#a0a0a0', '#374151', '#0ea5e9'],
+    border: ['#b0ada8', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
+             '#f59e0b', '#0ea5e9', '#374151', 'transparent', '#1a1a1a'],
+};
+
+function buildNpSwatches(containerId, colorInputId, previewId, applyFn) {
+    const container = document.getElementById(containerId);
+    const input     = document.getElementById(colorInputId);
+    const key       = containerId.replace('np-', '').replace('-swatches', '');
+    const palette   = NP_PALETTES[key] || [];
+
+    palette.forEach(c => {
+        const sw = document.createElement('div');
+        sw.className = 'np-swatch';
+        sw.style.background = c === 'transparent' ? 'linear-gradient(135deg,#fff 45%,#f00 45%)' : c;
+        sw.title = c;
+        sw.addEventListener('click', () => {
+            const val = c === 'transparent' ? 'transparent' : c;
+            if (input) input.value = val.startsWith('#') ? val : '#ffffff';
+            syncPreview(previewId, val);
+            applyFn(val);
+            // mark active
+            container.querySelectorAll('.np-swatch').forEach(s => s.classList.remove('active'));
+            sw.classList.add('active');
+        });
+        container.appendChild(sw);
+    });
+}
+
+/* ─── Apply fns per property ─────────────────────────── */
+function npApplyBg(val) {
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeColor = val;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (el) el.style.background = val;
+}
+
+function npApplyTextColor(val) {
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeTextColor = val;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+    const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
+    if (lbl) lbl.style.color = val;
+}
+
+function npApplyBorderColor(val) {
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeBorderColor = val;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (el) el.style.borderColor = val;
+}
+
+/* ─── Show / hide / sync ─────────────────────────────── */
+function showPropsPanel() { nodePropsEl.classList.add('visible'); }
+function hidePropsPanel()  { nodePropsEl.classList.remove('visible'); }
+
+function syncPropsPanel(id) {
+    const node = nodes[id];
+    if (!node) { hidePropsPanel(); return; }
+
+    const el = canvasEl.querySelector(`[data-id="${id}"]`);
+    const lbl = el ? (el.querySelector('.node-label') || el.querySelector('.node-caption')) : null;
+
+    /* ── Colors ── */
+    const bgVal     = el ? (el.style.background || computedHex(el, 'backgroundColor')) : '#ffffff';
+    const textVal   = lbl ? (lbl.style.color || computedHex(lbl, 'color')) : '#1a1a1a';
+    const borderVal = el ? (el.style.borderColor || computedHex(el, 'borderColor')) : '#b0ada8';
+
+    document.getElementById('np-bg-color').value     = bgVal.startsWith('#') ? bgVal.substring(0,7) : '#ffffff';
+    document.getElementById('np-text-color').value   = textVal.startsWith('#') ? textVal.substring(0,7) : '#1a1a1a';
+    document.getElementById('np-border-color').value = borderVal.startsWith('#') ? borderVal.substring(0,7) : '#b0ada8';
+
+    syncPreview('np-bg-preview',     bgVal);
+    syncPreview('np-text-preview',   textVal);
+    syncPreview('np-border-preview', borderVal);
+
+    /* ── Node size ── */
+    let sz = 110;
+    if (el) {
+        const rect = el.getBoundingClientRect();
+        sz = Math.round(Math.min(rect.width, rect.height) / scale) || (node.nodeCustomSize || 110);
+    }
+    sz = Math.max(50, Math.min(260, sz));
+    document.getElementById('np-node-size').value = sz;
+    document.getElementById('np-node-size-val').textContent = sz;
+
+    /* ── Font size ── */
+    let fs = node.nodeFontSize || 13;
+    if (lbl && !node.nodeFontSize) {
+        fs = parseInt(getComputedStyle(lbl).fontSize) || 13;
+    }
+    document.getElementById('np-font-size').value = fs;
+    document.getElementById('np-font-size-val').textContent = fs;
+
+    /* ── Font family ── */
+    const ff = node.nodeFontFamily || "'Inter', sans-serif";
+    const sel = document.getElementById('np-font-family');
+    // try to match
+    let matched = false;
+    for (const opt of sel.options) {
+        if (opt.value === ff) { opt.selected = true; matched = true; break; }
+    }
+    if (!matched) sel.selectedIndex = 0;
+
+    /* ── Text style ── */
+    document.getElementById('np-bold').classList.toggle('active',      !!node.nodeFontBold);
+    document.getElementById('np-italic').classList.toggle('active',    !!node.nodeFontItalic);
+    document.getElementById('np-underline').classList.toggle('active', !!node.nodeFontUnderline);
+
+    showPropsPanel();
+}
+
+/* ─── Build swatches (only once) ─────────────────────── */
+buildNpSwatches('np-bg-swatches',     'np-bg-color',     'np-bg-preview',     npApplyBg);
+buildNpSwatches('np-text-swatches',   'np-text-color',   'np-text-preview',   npApplyTextColor);
+buildNpSwatches('np-border-swatches', 'np-border-color', 'np-border-preview', npApplyBorderColor);
+
+/* ─── Color input events ─────────────────────────────── */
+document.getElementById('np-bg-color').addEventListener('input', e => {
+    syncPreview('np-bg-preview', e.target.value);
+    npApplyBg(e.target.value);
+});
+document.getElementById('np-text-color').addEventListener('input', e => {
+    syncPreview('np-text-preview', e.target.value);
+    npApplyTextColor(e.target.value);
+});
+document.getElementById('np-border-color').addEventListener('input', e => {
+    syncPreview('np-border-preview', e.target.value);
+    npApplyBorderColor(e.target.value);
+});
+
+/* Click on preview → open native color picker */
+['np-bg-preview', 'np-text-preview', 'np-border-preview'].forEach(pid => {
+    document.getElementById(pid).addEventListener('click', () => {
+        const inputId = pid.replace('-preview', '-color');
+        const inp = document.getElementById(inputId);
+        if (inp) inp.click();
+    });
+});
+
+/* ─── Node size slider ───────────────────────────────── */
+document.getElementById('np-node-size').addEventListener('input', e => {
+    const sz = parseInt(e.target.value);
+    document.getElementById('np-node-size-val').textContent = sz;
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeCustomSize = sz;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+
+    if (node.shape === 'circle' || node.shape === 'root') {
+        el.style.width  = sz + 'px';
+        el.style.height = sz + 'px';
+    } else if (node.shape === 'rect') {
+        el.style.width  = sz + 'px';
+        el.style.height = Math.round(sz * 0.45) + 'px';
+    } else {
+        // image frames: resize the img-frame child
+        const frame = el.querySelector('.img-frame');
+        if (frame) { frame.style.width = sz + 'px'; frame.style.height = sz + 'px'; }
+    }
+    updateAllEdges();
+});
+
+/* ─── Font size slider ───────────────────────────────── */
+document.getElementById('np-font-size').addEventListener('input', e => {
+    const fs = parseInt(e.target.value);
+    document.getElementById('np-font-size-val').textContent = fs;
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeFontSize = fs;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+    const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
+    if (lbl) lbl.style.fontSize = fs + 'px';
+});
+
+/* ─── Font family select ─────────────────────────────── */
+document.getElementById('np-font-family').addEventListener('change', e => {
+    const ff = e.target.value;
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeFontFamily = ff;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+    const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
+    if (lbl) lbl.style.fontFamily = ff;
+});
+
+/* ─── Text style toggles ─────────────────────────────── */
+function toggleTextStyle(prop, elId) {
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node[prop] = !node[prop];
+    document.getElementById(elId).classList.toggle('active', !!node[prop]);
+
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+    const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
+    if (!lbl) return;
+    if (prop === 'nodeFontBold')      lbl.style.fontWeight    = node[prop] ? '700' : '';
+    if (prop === 'nodeFontItalic')    lbl.style.fontStyle     = node[prop] ? 'italic' : '';
+    if (prop === 'nodeFontUnderline') lbl.style.textDecoration = node[prop] ? 'underline' : '';
+}
+
+document.getElementById('np-bold').addEventListener('click',      () => toggleTextStyle('nodeFontBold', 'np-bold'));
+document.getElementById('np-italic').addEventListener('click',    () => toggleTextStyle('nodeFontItalic', 'np-italic'));
+document.getElementById('np-underline').addEventListener('click', () => toggleTextStyle('nodeFontUnderline', 'np-underline'));
+
+/* ─── Close button ───────────────────────────────────── */
+document.getElementById('np-close').addEventListener('click', () => {
+    hidePropsPanel();
+});
