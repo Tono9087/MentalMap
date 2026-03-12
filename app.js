@@ -361,12 +361,36 @@ function updateEdge(fromId, toId) {
 
     const f = getNodeCenter(fromId);
     const t = getNodeCenter(toId);
-
     const dx = t.x - f.x;
-    const cx1 = f.x + dx * 0.45;
-    const cx2 = t.x - dx * 0.45;
+    const dy = t.y - f.y;
 
-    path.setAttribute('d', `M${f.x},${f.y} C${cx1},${f.y} ${cx2},${t.y} ${t.x},${t.y}`);
+    let d = '';
+
+    switch (currentEdgeStyle) {
+        case 'natural':
+            // Rama de árbol: Curva asimétrica más pronunciada cerca del origen
+            d = `M${f.x},${f.y} Q${f.x + dx * 0.7},${f.y} ${t.x},${t.y}`;
+            break;
+        case 'straight':
+            // Recta directa
+            d = `M${f.x},${f.y} L${t.x},${t.y}`;
+            break;
+        case 'stepped':
+            // Escalonada con ángulos rectos y esquinas redondeadas (imitamos con dos lineas ortogonales por ahora)
+            // Lógica: salir de parent hacia x medio, bajar/subir a y target, continuar a x target
+            const midX = f.x + dx / 2;
+            d = `M${f.x},${f.y} L${midX},${f.y} L${midX},${t.y} L${t.x},${t.y}`;
+            break;
+        case 'bezier':
+        default:
+            // Original: Suave curva en S
+            const cx1 = f.x + dx * 0.45;
+            const cx2 = t.x - dx * 0.45;
+            d = `M${f.x},${f.y} C${cx1},${f.y} ${cx2},${t.y} ${t.x},${t.y}`;
+            break;
+    }
+
+    path.setAttribute('d', d);
 }
 
 function updateAllEdges() {
@@ -1163,10 +1187,16 @@ function loadFromData(data) {
     editingId = null;
     nextId = data.nextId || 1;
 
-    /* Restaurar tema si está guardado en el JSON */
+    /* Restaurar tema y variables globales */
     if (data.theme) {
         applyTheme(data.theme === 'dark');
     }
+    if (data.currentEdgeStyle) {
+        currentEdgeStyle = data.currentEdgeStyle;
+        document.querySelectorAll('.edge-opt').forEach(btn => btn.classList.toggle('active', btn.dataset.edge === currentEdgeStyle));
+    }
+    if (data.currentLayout) currentLayout = data.currentLayout;
+
     if (data.customColors) {
         localStorage.setItem('mindmap-custom-colors', JSON.stringify(data.customColors));
         loadCustomColors(data.customColors);
@@ -1241,10 +1271,11 @@ jsonFileInput.addEventListener('change', importJSON);
 /* ─── Dropdown genérico: Nodo y Marco ────────────────── */
 const tbNodeWrap = document.getElementById('tb-node-wrap');
 const tbFrameWrap = document.getElementById('tb-frame-wrap');
+const tbEdgeWrap = document.getElementById('tb-edge-wrap');
 
 function closeAllDropdowns() {
     const tbLayoutWrapEl = document.getElementById('tb-layout-wrap');
-    [tbNodeWrap, tbFrameWrap, exportWrap, tbLayoutWrapEl].forEach(w => w && w.classList.remove('open'));
+    [tbNodeWrap, tbFrameWrap, tbEdgeWrap, exportWrap, tbLayoutWrapEl].forEach(w => w && w.classList.remove('open'));
 }
 
 [tbNodeWrap, tbFrameWrap].forEach(wrap => {
@@ -1588,6 +1619,33 @@ if (tbLayoutWrap) {
     });
 }
 
+/* ── Conectar dropdown de Líneas de conexión ───────── */
+let currentEdgeStyle = 'bezier';
+
+function applyEdgeStyle(type) {
+    currentEdgeStyle = type;
+    document.querySelectorAll('.edge-opt').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.edge === type);
+    });
+    updateAllEdges();
+    
+    const names = { bezier: 'Curva Suave', natural: 'Rama Natural', straight: 'Recta', stepped: 'Escalonada' };
+    toast(`〰️ Estilo de Línea: ${names[type] || type}`);
+    closeAllDropdowns();
+}
+
+if (tbEdgeWrap) {
+    tbEdgeWrap.querySelectorAll('.edge-opt').forEach(btn => {
+        btn.addEventListener('click', () => applyEdgeStyle(btn.dataset.edge));
+    });
+    tbEdgeWrap.querySelector('.tb-drop-main').addEventListener('click', e => {
+        e.stopPropagation();
+        const wasOpen = tbEdgeWrap.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) tbEdgeWrap.classList.add('open');
+    });
+}
+
 /* ════════════════════════════════════════════════════════
    EVENTOS DE PANEL CONTEXTUAL
 ════════════════════════════════════════════════════════ */
@@ -1748,6 +1806,8 @@ function getAppState() {
     return {
         nextId,
         theme: htmlEl.getAttribute('data-theme') || 'light',
+        currentLayout,
+        currentEdgeStyle,
         customColors: localStorage.getItem('mindmap-custom-colors'),
         nodes: Object.values(nodes).map(n => ({...n}))
     };
@@ -1804,6 +1864,14 @@ function restoreFromHistory(stateStr) {
     nextId = data.nextId;
 
     if (data.theme === 'dark') applyTheme(true); else applyTheme(false);
+    
+    // Restaurar Layout y Edge style sin generar animación/toast si no es estrictamente necesario,
+    // o simplemente actualizamos la variable global y dependemos de actulizar todo
+    if (data.currentLayout) currentLayout = data.currentLayout;
+    if (data.currentEdgeStyle) {
+        currentEdgeStyle = data.currentEdgeStyle;
+        document.querySelectorAll('.edge-opt').forEach(btn => btn.classList.toggle('active', btn.dataset.edge === currentEdgeStyle));
+    }
     
     if (data.customColors) {
         localStorage.setItem('mindmap-custom-colors', data.customColors);

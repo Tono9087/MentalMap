@@ -122,6 +122,38 @@
             </div>
         </div>
 
+        <!-- Líneas de Conexión dropdown -->
+        <div class="tb-drop-wrap" id="tb-edge-wrap">
+            <button class="tb-btn tb-drop-main" id="tb-edge-btn" title="Estilo de Líneas">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M4 20 Q 12 20, 12 12 T 20 4"></path>
+                    <circle cx="4" cy="20" r="2" fill="currentColor"></circle>
+                    <circle cx="20" cy="4" r="2" fill="currentColor"></circle>
+                </svg>
+                Líneas
+                <svg class="tb-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="tb-dropdown tb-layout-drop" id="tb-edge-drop">
+                <div class="tb-drop-label">Estilo de Conexión</div>
+                <button class="tb-drop-opt edge-opt" data-edge="bezier">
+                    <span class="layout-icon">〰️</span>
+                    <span class="layout-info"><b>Curva Suave</b><small>Orgánica y fluida</small></span>
+                </button>
+                <button class="tb-drop-opt edge-opt" data-edge="natural">
+                    <span class="layout-icon">🌿</span>
+                    <span class="layout-info"><b>Rama Natural</b><small>Curva asimétrica de árbol</small></span>
+                </button>
+                <button class="tb-drop-opt edge-opt" data-edge="straight">
+                    <span class="layout-icon">📏</span>
+                    <span class="layout-info"><b>Recta</b><small>Directa punto a punto</small></span>
+                </button>
+                <button class="tb-drop-opt edge-opt" data-edge="stepped">
+                    <span class="layout-icon">〽️</span>
+                    <span class="layout-info"><b>Escalonada</b><small>Ángulos rectos</small></span>
+                </button>
+            </div>
+        </div>
+
         <div class="tb-sep"></div>
 
         <button class="tb-btn" id="btn-theme-panel" title="Personalizar Colores">🎨</button>
