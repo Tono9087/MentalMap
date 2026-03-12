@@ -1184,7 +1184,7 @@ function loadFromData(data) {
 document.addEventListener('paste', e => {
     if (!selectedId) return;
     const node = nodes[selectedId];
-    if (!node || !isImageShape(node.shape)) return;
+    if (!node || (!isImageShape(node.shape) && node.shape !== 'root')) return;
 
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -1734,10 +1734,114 @@ applyTheme(localStorage.getItem('mindmap-theme') === 'dark');
 try { loadCustomColors(JSON.parse(localStorage.getItem('mindmap-custom-colors'))); } catch (e) { }
 
 /* ═══════════════════════════════════════════════════════
+   UNDO / REDO (HISTORIAL)
+═══════════════════════════════════════════════════════ */
+const history = [];
+let historyIndex = -1;
+let historyBlocked = false;
+let lastSavedStateStr = '';
+
+function getAppState() {
+    return {
+        nextId,
+        theme: htmlEl.getAttribute('data-theme') || 'light',
+        customColors: localStorage.getItem('mindmap-custom-colors'),
+        nodes: Object.values(nodes).map(n => ({...n}))
+    };
+}
+
+function saveHistoryState() {
+    if (historyBlocked) return;
+    const currentState = getAppState();
+    const currentStr = JSON.stringify(currentState);
+    
+    if (currentStr === lastSavedStateStr) return; // No hay cambios reales
+    
+    if (historyIndex < history.length - 1) {
+        history.splice(historyIndex + 1);
+    }
+    
+    history.push(currentStr);
+    if (history.length > 50) history.shift();
+    else historyIndex++;
+    
+    lastSavedStateStr = currentStr;
+}
+
+function undo() {
+    if (historyIndex > 0) {
+        if (editingId) commitEdit(editingId);
+        historyIndex--;
+        restoreFromHistory(history[historyIndex]);
+        toast('⏪ Deshecho');
+    }
+}
+
+function redo() {
+    if (historyIndex < history.length - 1) {
+        if (editingId) commitEdit(editingId);
+        historyIndex++;
+        restoreFromHistory(history[historyIndex]);
+        toast('⏩ Rehecho');
+    }
+}
+
+function restoreFromHistory(stateStr) {
+    historyBlocked = true;
+    const data = JSON.parse(stateStr);
+    const currentPan = { x: pan.x, y: pan.y };
+    const currentScale = scale;
+    
+    canvasEl.innerHTML = '';
+    svgEl.innerHTML = '';
+    nodes = {};
+    edges = {};
+    selectedId = null;
+    editingId = null;
+    nextId = data.nextId;
+
+    if (data.theme === 'dark') applyTheme(true); else applyTheme(false);
+    
+    if (data.customColors) {
+        localStorage.setItem('mindmap-custom-colors', data.customColors);
+        loadCustomColors(JSON.parse(data.customColors));
+    } else {
+        localStorage.removeItem('mindmap-custom-colors');
+        loadCustomColors(null);
+    }
+
+    const sorted = data.nodes.sort((a, b) => (!a.parentId ? -1 : !b.parentId ? 1 : 0));
+    for (const n of sorted) createNode(n);
+
+    pan = currentPan;
+    scale = currentScale;
+    applyTransform();
+    lastSavedStateStr = stateStr;
+    historyBlocked = false;
+}
+
+// Capturar cualquier acción que pudiese mutar el estado de manera deferida
+['pointerup', 'keyup', 'click', 'change', 'paste', 'drop'].forEach(evt => {
+    document.addEventListener(evt, () => setTimeout(saveHistoryState, 50));
+});
+
+/* ═══════════════════════════════════════════════════════
    ATAJOS DE TECLADO
 ═══════════════════════════════════════════════════════ */
 window.addEventListener('keydown', e => {
-    if (editingId) return; // no interceptar mientras se edita
+    // Interceptar Deshacer / Rehacer incluso si estamos editando texto (para evitar conflictos)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        undo();
+        return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        redo();
+        return;
+    }
+
+    if (editingId) return; // no interceptar otros hacks mientras se edita
 
     switch (e.key) {
         case 'Delete':
@@ -1874,6 +1978,7 @@ function init() {
     });
 
     updateRootShapeButtons('root-circle');
+    saveHistoryState();
     toast('🧠 ¡Bienvenido! Doble clic para editar · + para agregar nodos · Marcos de imagen con I', 4000);
 }
 
