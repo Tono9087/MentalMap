@@ -700,6 +700,78 @@ function loadHtml2Canvas(cb) {
     document.head.appendChild(script);
 }
 
+/**
+ * Prepara el documento clonado por html2canvas para que renderice
+ * correctamente: resuelve CSS custom properties y ajusta los transforms
+ * de los nodos (que usan translate(-50%,-50%)  y quedan posicionados
+ * con left/top) para que html2canvas los pinte en el lugar correcto.
+ */
+function fixCloneForExport(clonedDoc) {
+    const computed = getComputedStyle(document.documentElement);
+    const clonedRoot = clonedDoc.documentElement;
+
+    // 1. Resolver todas las CSS custom properties en el elemento raíz del clon
+    const cssVars = [
+        '--bg', '--surface', '--border', '--text', '--muted',
+        '--accent', '--accent2', '--danger', '--edge',
+        '--frame-bg', '--frame-border'
+    ];
+    cssVars.forEach(v => {
+        const val = computed.getPropertyValue(v).trim();
+        if (val) clonedRoot.style.setProperty(v, val);
+    });
+
+    // 2. Para cada nodo, aplanar el transform translate(-50%,-50%) y
+    //    forzar colores concretos en el texto
+    const textColor = computed.getPropertyValue('--text').trim() || '#1a1a1a';
+    const surfaceColor = computed.getPropertyValue('--surface').trim() || '#ffffff';
+
+    clonedDoc.querySelectorAll('.node').forEach(nodeEl => {
+        // Los nodos usan: position:absolute; left:Xpx; top:Ypx;
+        // transform: translate(-50%,-50%)
+        // html2canvas aplica el transform pero a veces ignora lo que hay dentro.
+        // Convertimos a margin negativo equivalente para evitar el problema.
+        const w = nodeEl.offsetWidth || parseFloat(nodeEl.style.width) || 110;
+        const h = nodeEl.offsetHeight || parseFloat(nodeEl.style.height) || 110;
+        nodeEl.style.transform = 'none';
+        nodeEl.style.marginLeft = (-w / 2) + 'px';
+        nodeEl.style.marginTop  = (-h / 2) + 'px';
+
+        // Forzar color de fondo y texto explícitamente
+        if (nodeEl.classList.contains('circle') || nodeEl.classList.contains('rect')) {
+            if (!nodeEl.style.backgroundColor || nodeEl.style.backgroundColor === '') {
+                nodeEl.style.backgroundColor = surfaceColor;
+            }
+            if (!nodeEl.style.color || nodeEl.style.color === '') {
+                nodeEl.style.color = textColor;
+            }
+        }
+
+        // Forzar color en el label
+        const lbl = nodeEl.querySelector('.node-label');
+        if (lbl) {
+            lbl.style.color = nodeEl.style.color || textColor;
+            lbl.style.visibility = 'visible';
+            lbl.style.opacity = '1';
+        }
+
+        // Caption de nodos de imagen
+        const cap = nodeEl.querySelector('.node-caption');
+        if (cap) {
+            cap.style.color = textColor;
+            cap.style.visibility = 'visible';
+            cap.style.opacity = '1';
+        }
+
+        // Ocultar botones de UI que no deben aparecer en el export
+        ['.add-btn', '.del-btn', '.drag-handle', '.img-change-overlay', '.root-img-overlay']
+            .forEach(sel => {
+                const btn = nodeEl.querySelector(sel);
+                if (btn) btn.style.display = 'none';
+            });
+    });
+}
+
 function exportPNG() {
     toast('⏳ Preparando imagen PNG...');
     const oldSel = hideUIForExport();
@@ -710,7 +782,10 @@ function doExportPNG(oldSel) {
     const wrapper = document.getElementById('canvas-wrap');
     html2canvas(wrapper, {
         backgroundColor: getComputedStyle(document.body).backgroundColor,
-        scale: 2
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        onclone: fixCloneForExport
     }).then(canvas => {
         restoreUIAfterExport(oldSel);
         try {
@@ -736,7 +811,10 @@ function doExportPDF(oldSel) {
     const wrapper = document.getElementById('canvas-wrap');
     html2canvas(wrapper, {
         backgroundColor: getComputedStyle(document.body).backgroundColor,
-        scale: 2
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        onclone: fixCloneForExport
     }).then(canvas => {
         restoreUIAfterExport(oldSel);
         try {
