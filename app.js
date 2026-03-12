@@ -274,6 +274,7 @@ function buildImageNode(el, node) {
     const cap = document.createElement('div');
     cap.className = 'node-caption';
     cap.textContent = node.label;
+    if (!node.label) cap.style.display = 'none';
     el.appendChild(cap);
 }
 
@@ -447,6 +448,7 @@ function startEditing(id) {
         /* Editar caption */
         const cap = el.querySelector('.node-caption');
         if (!cap) return;
+        cap.style.display = ''; // force visible
         cap.classList.add('editing');
 
         const ta = document.createElement('textarea');
@@ -501,9 +503,10 @@ function commitEdit(id) {
         const cap = el.querySelector('.node-caption');
         if (!cap) return;
         const ta = cap.querySelector('.caption-input');
-        if (ta) node.label = ta.value.trim() || node.label;
+        if (ta) node.label = ta.value.trim();
         cap.classList.remove('editing');
         cap.textContent = node.label;
+        cap.style.display = node.label ? '' : 'none';
     } else {
         const lbl = el.querySelector('.node-label');
         const ta = lbl && lbl.querySelector('.node-input');
@@ -1995,9 +1998,23 @@ function applyNodeStyles(el, node) {
     if (!el || !node) return;
     const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
 
-    if (node.nodeColor) el.style.background = node.nodeColor;
+    if (node.nodeColor) {
+        if (isImageShape(node.shape)) {
+            const frame = el.querySelector('.img-frame');
+            if (frame) frame.style.background = node.nodeColor;
+        } else {
+            el.style.background = node.nodeColor;
+        }
+    }
     if (node.nodeTextColor && lbl) lbl.style.color = node.nodeTextColor;
-    if (node.nodeBorderColor) { el.style.borderColor = node.nodeBorderColor; }
+    if (node.nodeBorderColor) {
+        if (isImageShape(node.shape)) {
+            const frame = el.querySelector('.img-frame');
+            if (frame) frame.style.borderColor = node.nodeBorderColor;
+        } else {
+            el.style.borderColor = node.nodeBorderColor;
+        }
+    }
     if (node.nodeFontSize && lbl) lbl.style.fontSize = node.nodeFontSize + 'px';
     if (node.nodeFontFamily && lbl) lbl.style.fontFamily = node.nodeFontFamily;
     if (lbl) {
@@ -2078,7 +2095,14 @@ function npApplyBg(val) {
     if (!node) return;
     node.nodeColor = val;
     const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
-    if (el) el.style.background = val;
+    if (el) {
+        if (isImageShape(node.shape)) {
+            const frame = el.querySelector('.img-frame');
+            if (frame) frame.style.background = val;
+        } else {
+            el.style.background = val;
+        }
+    }
 }
 
 function npApplyTextColor(val) {
@@ -2098,7 +2122,14 @@ function npApplyBorderColor(val) {
     if (!node) return;
     node.nodeBorderColor = val;
     const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
-    if (el) el.style.borderColor = val;
+    if (el) {
+        if (isImageShape(node.shape)) {
+            const frame = el.querySelector('.img-frame');
+            if (frame) frame.style.borderColor = val;
+        } else {
+            el.style.borderColor = val;
+        }
+    }
 }
 
 /* ─── Show / hide / sync ─────────────────────────────── */
@@ -2132,9 +2163,11 @@ function syncPropsPanel(id) {
     if (borderSection) borderSection.style.display = isRoot ? 'none' : '';
 
     /* ── Colors ── */
-    const bgVal = el ? (el.style.background || computedHex(el, 'backgroundColor')) : '#ffffff';
+    const isImageNode = isImageShape(node.shape);
+    const targetEl = isImageNode && el ? (el.querySelector('.img-frame') || el) : el;
+    const bgVal = targetEl ? (targetEl.style.background || computedHex(targetEl, 'backgroundColor')) : '#ffffff';
     const textVal = lbl ? (lbl.style.color || computedHex(lbl, 'color')) : '#1a1a1a';
-    const borderVal = el ? (el.style.borderColor || computedHex(el, 'borderColor')) : '#b0ada8';
+    const borderVal = targetEl ? (targetEl.style.borderColor || computedHex(targetEl, 'borderColor')) : '#b0ada8';
 
     document.getElementById('np-bg-color').value = bgVal.startsWith('#') ? bgVal.substring(0, 7) : '#ffffff';
     document.getElementById('np-text-color').value = textVal.startsWith('#') ? textVal.substring(0, 7) : '#1a1a1a';
