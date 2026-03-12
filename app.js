@@ -692,152 +692,370 @@ function restoreUIAfterExport(oldSel) {
     if (oldSel) selectNode(oldSel);
 }
 
-function loadHtml2Canvas(cb) {
-    if (window.html2canvas) { cb(); return; }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    script.onload = cb;
-    document.head.appendChild(script);
+/* ═══════════════════════════════════════════════════════
+   EXPORTAR — Renderizador propio (sin html2canvas)
+   Dibuja el mapa directamente en un <canvas> HTML5
+═══════════════════════════════════════════════════════ */
+
+/** Resuelve un color CSS (puede ser var() o hex o rgb) al valor real */
+function resolveCssColor(varName, fallback) {
+    const val = getComputedStyle(document.documentElement)
+                    .getPropertyValue(varName).trim();
+    return val || fallback;
+}
+
+/** Convierte un string de color CSS a algo que canvas entiende */
+function toCanvasColor(cssVal, fallback) {
+    if (!cssVal || cssVal === 'transparent') return fallback || 'transparent';
+    // Si ya es hex o rgb, canvas lo entiende directo
+    if (cssVal.startsWith('#') || cssVal.startsWith('rgb') || cssVal.startsWith('hsl')) return cssVal;
+    return fallback || '#000000';
+}
+
+/** Obtiene el tamaño visual de un nodo en píxeles de mundo (sin escala de canvas) */
+function getNodeSize(node) {
+    const el = canvasEl.querySelector(`[data-id="${node.id}"]`);
+    if (el) {
+        // getBoundingClientRect incluye el scale del canvas; dividimos
+        const r = el.getBoundingClientRect();
+        return { w: r.width / scale, h: r.height / scale };
+    }
+    // Fallback por shape
+    if (node.shape === 'root') return { w: 160, h: 160 };
+    if (node.shape === 'rect') return { w: 138, h: 58 };
+    return { w: 110, h: 110 };
+}
+
+/** Dibuja texto con word-wrap simple centrado en (cx,cy) */
+function drawTextWrapped(ctx, text, cx, cy, maxW, lineH, maxLines) {
+    const words = (text || '').split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+        const test = cur ? cur + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW && cur) {
+            lines.push(cur);
+            cur = w;
+            if (lines.length >= maxLines) break;
+        } else {
+            cur = test;
+        }
+    }
+    if (cur) lines.push(cur);
+    const totalH = lines.length * lineH;
+    const startY = cy - totalH / 2 + lineH * 0.5;
+    lines.forEach((line, i) => {
+        ctx.fillText(line, cx, startY + i * lineH);
+    });
+}
+
+/** Dibuja un rectángulo redondeado */
+function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
 }
 
 /**
- * Prepara el documento clonado por html2canvas para que renderice
- * correctamente: resuelve CSS custom properties y ajusta los transforms
- * de los nodos (que usan translate(-50%,-50%)  y quedan posicionados
- * con left/top) para que html2canvas los pinte en el lugar correcto.
+ * Renderiza el mapa completo a un <canvas> y lo devuelve.
+ * Escala RENDER_SCALE para mayor resolución.
  */
-function fixCloneForExport(clonedDoc) {
-    const computed = getComputedStyle(document.documentElement);
-    const clonedRoot = clonedDoc.documentElement;
+async function renderMapToCanvas() {
+    const RENDER_SCALE = 2;
+    const PADDING = 60; // píxeles de margen alrededor del contenido
 
-    // 1. Resolver todas las CSS custom properties en el elemento raíz del clon
-    const cssVars = [
-        '--bg', '--surface', '--border', '--text', '--muted',
-        '--accent', '--accent2', '--danger', '--edge',
-        '--frame-bg', '--frame-border'
-    ];
-    cssVars.forEach(v => {
-        const val = computed.getPropertyValue(v).trim();
-        if (val) clonedRoot.style.setProperty(v, val);
-    });
+    // 1. Calcular bounding box de todos los nodos
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const node of Object.values(nodes)) {
+        const { w, h } = getNodeSize(node);
+        minX = Math.min(minX, node.x - w / 2);
+        minY = Math.min(minY, node.y - h / 2);
+        maxX = Math.max(maxX, node.x + w / 2);
+        maxY = Math.max(maxY, node.y + h / 2);
+    }
 
-    // 2. Para cada nodo, aplanar el transform translate(-50%,-50%) y
-    //    forzar colores concretos en el texto
-    const textColor = computed.getPropertyValue('--text').trim() || '#1a1a1a';
-    const surfaceColor = computed.getPropertyValue('--surface').trim() || '#ffffff';
+    const contentW = maxX - minX + PADDING * 2;
+    const contentH = maxY - minY + PADDING * 2;
+    const offX = -minX + PADDING; // offset para que (0,0) del mapa quede en (PADDING,PADDING)
+    const offY = -minY + PADDING;
 
-    clonedDoc.querySelectorAll('.node').forEach(nodeEl => {
-        // Los nodos usan: position:absolute; left:Xpx; top:Ypx;
-        // transform: translate(-50%,-50%)
-        // html2canvas aplica el transform pero a veces ignora lo que hay dentro.
-        // Convertimos a margin negativo equivalente para evitar el problema.
-        const w = nodeEl.offsetWidth || parseFloat(nodeEl.style.width) || 110;
-        const h = nodeEl.offsetHeight || parseFloat(nodeEl.style.height) || 110;
-        nodeEl.style.transform = 'none';
-        nodeEl.style.marginLeft = (-w / 2) + 'px';
-        nodeEl.style.marginTop  = (-h / 2) + 'px';
+    // 2. Crear canvas
+    const canvas = document.createElement('canvas');
+    canvas.width  = Math.ceil(contentW * RENDER_SCALE);
+    canvas.height = Math.ceil(contentH * RENDER_SCALE);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(RENDER_SCALE, RENDER_SCALE);
 
-        // Forzar color de fondo y texto explícitamente
-        if (nodeEl.classList.contains('circle') || nodeEl.classList.contains('rect')) {
-            if (!nodeEl.style.backgroundColor || nodeEl.style.backgroundColor === '') {
-                nodeEl.style.backgroundColor = surfaceColor;
+    // 3. Fondo
+    const bgColor = resolveCssColor('--bg', '#f5f4f2');
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, contentW, contentH);
+
+    // 4. Colores del tema
+    const C = {
+        surface:  resolveCssColor('--surface',  '#ffffff'),
+        border:   resolveCssColor('--border',   '#b0ada8'),
+        text:     resolveCssColor('--text',     '#1a1a1a'),
+        accent:   resolveCssColor('--accent',   '#4f46e5'),
+        accent2:  resolveCssColor('--accent2',  '#7c3aed'),
+        edge:     resolveCssColor('--edge',     '#8b8882'),
+        frameBg:  resolveCssColor('--frame-bg', '#eef0f8'),
+        frameBd:  resolveCssColor('--frame-border', '#a4a8c8'),
+    };
+
+    // 5. Dibujar aristas (curvas de bezier)
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = C.edge;
+    for (const [key, path] of Object.entries(edges)) {
+        const fromId = path.dataset.from;
+        const toId   = path.dataset.to;
+        const from   = nodes[fromId];
+        const to     = nodes[toId];
+        if (!from || !to) continue;
+
+        const fx = from.x + offX, fy = from.y + offY;
+        const tx = to.x + offX,   ty = to.y + offY;
+        const dx = tx - fx;
+        const cx1 = fx + dx * 0.45;
+        const cx2 = tx - dx * 0.45;
+
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.bezierCurveTo(cx1, fy, cx2, ty, tx, ty);
+        ctx.stroke();
+    }
+
+    // 6. Dibujar nodos
+    // Ordenar: root primero
+    const nodeList = Object.values(nodes).sort((a, b) =>
+        a.shape === 'root' ? -1 : b.shape === 'root' ? 1 : 0
+    );
+
+    for (const node of nodeList) {
+        const { w, h } = getNodeSize(node);
+        const cx = node.x + offX;
+        const cy = node.y + offY;
+        const x  = cx - w / 2;
+        const y  = cy - h / 2;
+
+        // Leer colores custom del nodo (pueden ser inline styles)
+        const domEl = canvasEl.querySelector(`[data-id="${node.id}"]`);
+        const lblEl = domEl ? (domEl.querySelector('.node-label') || domEl.querySelector('.node-caption')) : null;
+
+        let fillColor   = node.nodeColor || C.surface;
+        let strokeColor = node.nodeBorderColor || C.border;
+        let textColor   = (node.nodeTextColor || (lblEl && lblEl.style.color)) || C.text;
+
+        // Leer colores inline reales del DOM (más fiable)
+        if (domEl) {
+            const s = domEl.style;
+            if (s.background && s.background !== '') fillColor = s.background;
+            if (s.backgroundColor && s.backgroundColor !== '') fillColor = s.backgroundColor;
+            if (s.borderColor && s.borderColor !== '') strokeColor = s.borderColor;
+        }
+        if (lblEl && lblEl.style.color) textColor = lblEl.style.color;
+
+        // ── Root ──
+        if (node.shape === 'root') {
+            // Gradiente
+            const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+            grad.addColorStop(0, C.accent);
+            grad.addColorStop(1, C.accent2);
+
+            const rs = node.rootShape || 'root-circle';
+            ctx.save();
+            if (rs === 'root-circle') {
+                ctx.beginPath();
+                ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+                ctx.closePath();
+            } else if (rs === 'root-diamond') {
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - h / 2);
+                ctx.lineTo(cx + w / 2, cy);
+                ctx.lineTo(cx, cy + h / 2);
+                ctx.lineTo(cx - w / 2, cy);
+                ctx.closePath();
+            } else if (rs === 'root-hexagon') {
+                ctx.beginPath();
+                const pts = [[.5,0],[1,.25],[1,.75],[.5,1],[0,.75],[0,.25]];
+                pts.forEach(([px, py], i) => {
+                    const hx = x + px * w, hy = y + py * h;
+                    i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
+                });
+                ctx.closePath();
+            } else {
+                // root-square, root-rect
+                roundRect(ctx, x, y, w, h, 18);
             }
-            if (!nodeEl.style.color || nodeEl.style.color === '') {
-                nodeEl.style.color = textColor;
+
+            // Imagen si la hay
+            if (node.imageData) {
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.clip();
+                const img = new Image();
+                img.src = node.imageData;
+                await new Promise(res => { img.onload = res; img.onerror = res; });
+                ctx.drawImage(img, x, y, w, h);
+            } else {
+                ctx.fillStyle = grad;
+                ctx.fill();
             }
+            ctx.restore();
+
+            // Texto del root
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const rootFs = parseInt(resolveCssColor('--sz-central-fs', '16')) || 16;
+            const fontBold = node.nodeFontBold ? '700' : '600';
+            const fs = node.nodeFontSize || rootFs;
+            const ff = node.nodeFontFamily || "Inter, system-ui, sans-serif";
+            ctx.font = `${fontBold} ${fs}px ${ff}`;
+            ctx.fillStyle = '#ffffff';
+            if (rs === 'root-diamond') {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(Math.PI / 4);
+                ctx.translate(-cx, -cy);
+                drawTextWrapped(ctx, node.label, cx, cy, w * 0.65, fs * 1.35, 3);
+                ctx.restore();
+            } else {
+                drawTextWrapped(ctx, node.label, cx, cy, w * 0.8, fs * 1.35, 4);
+            }
+            ctx.restore();
+            continue;
         }
 
-        // Forzar color en el label
-        const lbl = nodeEl.querySelector('.node-label');
-        if (lbl) {
-            lbl.style.color = nodeEl.style.color || textColor;
-            lbl.style.visibility = 'visible';
-            lbl.style.opacity = '1';
+        // ── Nodos de imagen ──
+        if (isImageShape(node.shape)) {
+            // Marco
+            ctx.save();
+            if (node.shape === 'img-circle') {
+                ctx.beginPath();
+                ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+                ctx.closePath();
+            } else {
+                roundRect(ctx, x, y, w, h, 14);
+            }
+            ctx.fillStyle = C.frameBg;
+            ctx.fill();
+            ctx.strokeStyle = C.frameBd;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if (node.imageData) {
+                ctx.clip();
+                const img = new Image();
+                img.src = node.imageData;
+                await new Promise(res => { img.onload = res; img.onerror = res; });
+                ctx.drawImage(img, x, y, w, h);
+            }
+            ctx.restore();
+
+            // Caption
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const capFs = node.nodeFontSize || 12;
+            const capFf = node.nodeFontFamily || "Inter, system-ui, sans-serif";
+            ctx.font = `500 ${capFs}px ${capFf}`;
+            ctx.fillStyle = toCanvasColor(textColor, C.text);
+            ctx.fillText(node.label, cx, cy + h / 2 + 6);
+            ctx.restore();
+            continue;
         }
 
-        // Caption de nodos de imagen
-        const cap = nodeEl.querySelector('.node-caption');
-        if (cap) {
-            cap.style.color = textColor;
-            cap.style.visibility = 'visible';
-            cap.style.opacity = '1';
-        }
+        // ── Círculo / Rect ──
+        ctx.save();
 
-        // Ocultar botones de UI que no deben aparecer en el export
-        ['.add-btn', '.del-btn', '.drag-handle', '.img-change-overlay', '.root-img-overlay']
-            .forEach(sel => {
-                const btn = nodeEl.querySelector(sel);
-                if (btn) btn.style.display = 'none';
-            });
-    });
+        // Fondo + borde
+        if (node.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+            ctx.closePath();
+        } else {
+            roundRect(ctx, x, y, w, h, 12);
+        }
+        ctx.fillStyle = toCanvasColor(fillColor, C.surface);
+        ctx.fill();
+        ctx.strokeStyle = toCanvasColor(strokeColor, C.border);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Texto
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const nodeFs = node.nodeFontSize || 13;
+        const nodeFf = node.nodeFontFamily || "Inter, system-ui, sans-serif";
+        const fw = node.nodeFontBold ? '700' : '500';
+        const fi = node.nodeFontItalic ? 'italic ' : '';
+        ctx.font = `${fi}${fw} ${nodeFs}px ${nodeFf}`;
+        ctx.fillStyle = toCanvasColor(textColor, C.text);
+        if (node.nodeFontUnderline) {
+            // Canvas no soporta underline nativo; lo hacemos manual
+            const lines = (node.label || '').split(' ');
+            // (simplificado: subrayado post-dibujo no es trivial; se omite pero el texto sí sale)
+        }
+        const maxTextW = Math.max(w - 20, 20);
+        drawTextWrapped(ctx, node.label, cx, cy, maxTextW, nodeFs * 1.35, 4);
+        ctx.restore();
+    }
+
+    return canvas;
 }
 
 function exportPNG() {
-    toast('⏳ Preparando imagen PNG...');
+    toast('⏳ Generando imagen PNG...');
     const oldSel = hideUIForExport();
-    loadHtml2Canvas(() => doExportPNG(oldSel));
-}
-
-function doExportPNG(oldSel) {
-    const wrapper = document.getElementById('canvas-wrap');
-    html2canvas(wrapper, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        onclone: fixCloneForExport
-    }).then(canvas => {
-        restoreUIAfterExport(oldSel);
+    // pequeño delay para que el DOM oculte la UI antes de leer tamaños
+    setTimeout(async () => {
         try {
+            const canvas = await renderMapToCanvas();
+            restoreUIAfterExport(oldSel);
             const dataUrl = canvas.toDataURL('image/png');
-            const a = Object.assign(document.createElement('a'), { href: dataUrl, download: 'mapa-mental.png' });
+            const a = Object.assign(document.createElement('a'),
+                { href: dataUrl, download: 'mapa-mental.png' });
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             toast('🖼 Imagen PNG exportada con éxito');
-        } catch (e) {
-            toast('❌ Error guardando imagen');
+        } catch(err) {
+            restoreUIAfterExport(oldSel);
+            console.error('Export PNG error:', err);
+            toast('❌ Error al generar la imagen');
         }
-    });
+    }, 50);
 }
 
 function exportPDF() {
-    toast('⏳ Preparando PDF...');
+    toast('⏳ Generando PDF...');
     const oldSel = hideUIForExport();
-    loadHtml2Canvas(() => doExportPDF(oldSel));
-}
-
-function doExportPDF(oldSel) {
-    const wrapper = document.getElementById('canvas-wrap');
-    html2canvas(wrapper, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        onclone: fixCloneForExport
-    }).then(canvas => {
-        restoreUIAfterExport(oldSel);
+    setTimeout(async () => {
         try {
+            const canvas = await renderMapToCanvas();
+            restoreUIAfterExport(oldSel);
             const imgData = canvas.toDataURL('image/png');
             const imgW = canvas.width;
             const imgH = canvas.height;
 
-            // Cargar jsPDF on-demand
             function makePDF() {
                 const { jsPDF } = window.jspdf;
-
-                // canvas tiene scale:2, así que el contenido real = canvas px / 2
-                // Convertir a mm: 1px a 96dpi = 25.4/96 mm
                 const PX_TO_MM = 25.4 / 96;
+                // El canvas se generó a RENDER_SCALE=2, así que dividimos entre 2
                 const wMm = (imgW / 2) * PX_TO_MM;
                 const hMm = (imgH / 2) * PX_TO_MM;
-
                 const orientation = wMm >= hMm ? 'landscape' : 'portrait';
-                const pdf = new jsPDF({
-                    orientation,
-                    unit: 'mm',
-                    format: [wMm, hMm]
-                });
+                const pdf = new jsPDF({ orientation, unit: 'mm', format: [wMm, hMm] });
                 pdf.addImage(imgData, 'PNG', 0, 0, wMm, hMm, '', 'FAST');
                 pdf.save('mapa-mental.pdf');
                 toast('📄 PDF exportado con éxito');
@@ -852,10 +1070,12 @@ function doExportPDF(oldSel) {
                 script.onerror = () => toast('❌ No se pudo cargar jsPDF');
                 document.head.appendChild(script);
             }
-        } catch (e) {
-            toast('❌ Error generando PDF');
+        } catch(err) {
+            restoreUIAfterExport(oldSel);
+            console.error('Export PDF error:', err);
+            toast('❌ Error al generar el PDF');
         }
-    });
+    }, 50);
 }
 
 function importJSON(e) {
