@@ -654,6 +654,17 @@ function centerMap() {
 /* ═══════════════════════════════════════════════════════
    EXPORTAR / IMPORTAR JSON
 ═══════════════════════════════════════════════════════ */
+/* ─── Nombre de archivo elegido por el usuario ───────── */
+function getExportFilename(ext) {
+    const raw = (document.getElementById('export-filename')?.value || '').trim();
+    // Quitar la extensión si el usuario la escribió
+    const base = raw.replace(/\.[a-z0-9]+$/i, '') || 'mapa-mental';
+    return base + '.' + ext;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPORTAR / IMPORTAR JSON
+═══════════════════════════════════════════════════════ */
 function exportJSON() {
     const isDark = htmlEl.getAttribute('data-theme') === 'dark';
     const ccs = localStorage.getItem('mindmap-custom-colors');
@@ -668,7 +679,7 @@ function exportJSON() {
     const jsonStr = JSON.stringify(data, null, 2);
     const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
 
-    const a = Object.assign(document.createElement('a'), { href: dataUrl, download: 'mindmap.json' });
+    const a = Object.assign(document.createElement('a'), { href: dataUrl, download: getExportFilename('json') });
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1023,7 +1034,7 @@ function exportPNG() {
             restoreUIAfterExport(oldSel);
             const dataUrl = canvas.toDataURL('image/png');
             const a = Object.assign(document.createElement('a'),
-                { href: dataUrl, download: 'mapa-mental.png' });
+                { href: dataUrl, download: getExportFilename('png') });
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1080,7 +1091,7 @@ function exportPDF() {
 
                 const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
                 pdf.addImage(imgData, 'PNG', xOff, yOff, drawW, drawH, '', 'FAST');
-                pdf.save('mapa-mental.pdf');
+                pdf.save(getExportFilename('pdf'));
                 toast('📄 PDF exportado con éxito');
             }
 
@@ -1236,8 +1247,19 @@ document.getElementById('btn-export').addEventListener('click', e => {
 document.getElementById('btn-export-png').addEventListener('click', () => { closeAllDropdowns(); exportPNG(); });
 document.getElementById('btn-export-pdf').addEventListener('click', () => { closeAllDropdowns(); exportPDF(); });
 
+// El input de nombre de archivo no debe cerrar el dropdown
+const exportFilenameInput = document.getElementById('export-filename');
+if (exportFilenameInput) {
+    exportFilenameInput.addEventListener('click', e => e.stopPropagation());
+    exportFilenameInput.addEventListener('keydown', e => e.stopPropagation());
+}
+
+// Clics dentro del export-dropdown no cierran
+document.getElementById('export-dropdown').addEventListener('click', e => e.stopPropagation());
+
 // Cerrar todos los dropdowns al hacer clic fuera
 document.addEventListener('click', () => closeAllDropdowns());
+
 
 /* ─── Botón imagen en nodo raíz ──────────────────────── */
 document.getElementById('btn-root-img').addEventListener('click', () => triggerRootImageUpload());
