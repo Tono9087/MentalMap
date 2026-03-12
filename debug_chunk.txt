@@ -1,0 +1,9 @@
+.tb-drop-opt:hover {
+    background: rgba(99,102,241,.1);
+    color: var(--accent);
+
+.tb-export-main:hover,
+.tb-export-wrap.open .tb-export-main {
+    background: rgba(99, 102, 241, .12) !important;
+    border-color: rgba(99, 102, 241, .35) !important;
+    color: var(--accent2) !important;

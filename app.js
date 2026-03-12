@@ -381,12 +381,16 @@ function addChildNode(parentId, shape = 'circle') {
 
     const children = Object.values(nodes).filter(n => n.parentId === parentId);
     const count = children.length;
+    const MIN_ARC = 75;  // minimum px between node centers on the arc
+    const total = count + 1;
+    const spreadAngle = (Math.PI * 2) / total;
     const baseRadius = (parent.shape === 'root') ? 210 : 170;
-    const spread = (Math.PI * 2) / (count + 1);
-    const angle = -Math.PI / 2 + count * spread;
+    // Grow radius so each child gets at least MIN_ARC px of arc
+    const radius = Math.max(baseRadius, (total * MIN_ARC) / (Math.PI * 2));
+    const angle = -Math.PI / 2 + count * spreadAngle;
 
-    const x = parent.x + Math.cos(angle) * baseRadius;
-    const y = parent.y + Math.sin(angle) * baseRadius;
+    const x = parent.x + Math.cos(angle) * radius;
+    const y = parent.y + Math.sin(angle) * radius;
 
     const n = createNode({ label: isImageShape(shape) ? 'Imagen' : 'Idea', x, y, shape, parentId });
     selectNode(n.id);
@@ -1217,7 +1221,8 @@ const tbNodeWrap  = document.getElementById('tb-node-wrap');
 const tbFrameWrap = document.getElementById('tb-frame-wrap');
 
 function closeAllDropdowns() {
-    [tbNodeWrap, tbFrameWrap, exportWrap].forEach(w => w && w.classList.remove('open'));
+    const tbLayoutWrapEl = document.getElementById('tb-layout-wrap');
+    [tbNodeWrap, tbFrameWrap, exportWrap, tbLayoutWrapEl].forEach(w => w && w.classList.remove('open'));
 }
 
 [tbNodeWrap, tbFrameWrap].forEach(wrap => {
@@ -1334,8 +1339,232 @@ function changeNodeSize(size) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   EVENTOS DE PANEL CONTEXTUAL
+   MOTOR DE DISTRIBUCIÓN (LAYOUT ENGINE)
 ═══════════════════════════════════════════════════════ */
+
+/** Helpers de árbol */
+function getChildren(id) {
+    return Object.values(nodes).filter(n => n.parentId === id);
+}
+
+function subtreeSize(id) {
+    const ch = getChildren(id);
+    if (ch.length === 0) return 1;
+    return ch.reduce((s, c) => s + subtreeSize(c.id), 0);
+}
+
+/* ── Calculadores de posición (solo retornan {id,x,y}, no mueven nada) ── */
+
+// subtreeCount cuenta TODOS los nodos del subárbol (no solo hojas)
+// esto garantiza espacio para nodos intermedios también
+function subtreeCount(id) {
+    const ch = getChildren(id);
+    return 1 + ch.reduce((s, c) => s + subtreeCount(c.id), 0);
+}
+
+function calcRadial() {
+    const result = [{ id: 'root', x: 0, y: 0 }];
+
+    function place(parentId, parentX, parentY, startAngle, angleSpan, baseRadius) {
+        const ch = getChildren(parentId);
+        if (!ch.length) return;
+
+        const sizes = ch.map(c => Math.max(subtreeCount(c.id), 1));
+        const total = sizes.reduce((a, b) => a + b, 0);
+        const absSpan = Math.max(Math.abs(angleSpan), 0.25);
+
+        // Constraint 1: each node-unit gets at least 90px of arc
+        const rLeaf = (total * 90) / absSpan;
+        // Constraint 2: each direct child gets at least 135px of arc (prevents overlap of wide nodes)
+        const rChild = (ch.length * 135) / absSpan;
+        const radius = Math.max(baseRadius, rLeaf, rChild);
+
+        let curAngle = startAngle;
+        ch.forEach((child, i) => {
+            const frac = sizes[i] / total;
+            const mid = curAngle + (frac * angleSpan) / 2;
+            const x = parentX + Math.cos(mid) * radius;
+            const y = parentY + Math.sin(mid) * radius;
+            result.push({ id: child.id, x, y });
+
+            const nextBase = Math.max(radius * 0.5, 120);
+            // Cap angular spread to 1.3pi (234 deg) to prevent wrapping backward into parent
+            const childSpan = Math.min(frac * angleSpan, Math.PI * 1.3);
+            // Center the new sub-arc around 'mid'
+            const childStart = mid - (childSpan / 2);
+            place(child.id, x, y, childStart, childSpan, nextBase);
+            
+            curAngle += frac * angleSpan;
+        });
+    }
+
+    place('root', 0, 0, -Math.PI, Math.PI * 2, 160);
+    return result;
+}
+
+function calcTreeTB() {
+    const result = [];
+    const V_GAP = 100; // espacio vertical por nodo (aumentado para evitar overlap)
+    const H_GAP = 190; // distancia entre niveles (profundidad)
+
+    function assign(id, depth, yStart) {
+        const size = subtreeCount(id); // todos los nodos del subárbol
+        const x = yStart + (size * V_GAP) / 2 - V_GAP / 2;
+        const y = -200 + depth * H_GAP;
+        result.push({ id, x, y });
+        const ch = getChildren(id);
+        let curY = yStart;
+        ch.forEach(child => {
+            assign(child.id, depth + 1, curY);
+            curY += subtreeCount(child.id) * V_GAP;
+        });
+    }
+
+    assign('root', 0, -(subtreeCount('root') * V_GAP) / 2);
+    return result;
+}
+
+function calcSinoptico() {
+    const result = [];
+    const LEVEL_GAP = 220; // distancia horizontal entre niveles (aumentado)
+    const NODE_GAP  = 95;  // espacio vertical por nodo (aumentado para evitar overlap)
+
+    function assign(id, depth, yStart) {
+        const size = subtreeCount(id); // todos los nodos del subárbol
+        const x = -380 + depth * LEVEL_GAP;
+        const y = yStart + (size * NODE_GAP) / 2 - NODE_GAP / 2;
+        result.push({ id, x, y });
+        const ch = getChildren(id);
+        let curY = yStart;
+        ch.forEach(child => {
+            assign(child.id, depth + 1, curY);
+            curY += subtreeCount(child.id) * NODE_GAP;
+        });
+    }
+
+    assign('root', 0, -(subtreeCount('root') * NODE_GAP) / 2);
+    return result;
+}
+
+function calcLista() {
+    const result = [];
+    const ROW_GAP = 85;
+    const INDENT  = 200;
+    const total   = Object.values(nodes).length;
+    let curY = -(total * ROW_GAP) / 2;
+
+    function assign(id, depth) {
+        result.push({ id, x: -380 + depth * INDENT, y: curY });
+        curY += ROW_GAP;
+        getChildren(id).forEach(child => assign(child.id, depth + 1));
+    }
+
+    assign('root', 0);
+    return result;
+}
+
+/* ── Animador rAF: mueve nodos Y redibuja aristas en cada frame ─────── */
+let layoutAnimId = null;
+
+function animateLayout(targets) {
+    // Snapshot de posiciones iniciales
+    const from = {};
+    targets.forEach(({ id }) => {
+        const n = nodes[id];
+        from[id] = { x: n ? n.x : 0, y: n ? n.y : 0 };
+    });
+
+    const DURATION = 480; // ms
+    const start = performance.now();
+
+    function easeInOut(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    if (layoutAnimId) cancelAnimationFrame(layoutAnimId);
+
+    function frame(now) {
+        const elapsed = now - start;
+        const t = Math.min(elapsed / DURATION, 1);
+        const e = easeInOut(t);
+
+        // Mover cada nodo interpolado
+        targets.forEach(({ id, x: tx, y: ty }) => {
+            const fx = from[id].x;
+            const fy = from[id].y;
+            const cx = fx + (tx - fx) * e;
+            const cy = fy + (ty - fy) * e;
+            const node = nodes[id];
+            if (node) { node.x = cx; node.y = cy; }
+            const el = canvasEl.querySelector(`[data-id="${id}"]`);
+            if (el) { el.style.left = cx + 'px'; el.style.top = cy + 'px'; }
+        });
+
+        // Redibujar TODAS las aristas en este mismo frame
+        updateAllEdges();
+
+        if (t < 1) {
+            layoutAnimId = requestAnimationFrame(frame);
+        } else {
+            layoutAnimId = null;
+            // Asegurar posición final exacta
+            targets.forEach(({ id, x, y }) => {
+                const node = nodes[id];
+                if (node) { node.x = x; node.y = y; }
+                const el = canvasEl.querySelector(`[data-id="${id}"]`);
+                if (el) { el.style.left = x + 'px'; el.style.top = y + 'px'; }
+            });
+            updateAllEdges();
+            setTimeout(() => centerMap(), 30);
+        }
+    }
+
+    layoutAnimId = requestAnimationFrame(frame);
+}
+
+/* ── Aplicar layout ──────────────────────────────────── */
+let currentLayout = 'radial';
+
+function applyLayout(type) {
+    currentLayout = type;
+
+    let targets;
+    switch (type) {
+        case 'radial':    targets = calcRadial();    break;
+        case 'tree-tb':   targets = calcTreeTB();    break;
+        case 'sinoptico': targets = calcSinoptico(); break;
+        case 'lista':     targets = calcLista();     break;
+        default: return;
+    }
+
+    animateLayout(targets);
+
+    document.querySelectorAll('.layout-opt').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === type);
+    });
+
+    const names = { radial: 'Mapa Mental', 'tree-tb': 'Árbol', sinoptico: 'Sinóptico', lista: 'Lista' };
+    toast(`📐 Distribución: ${names[type] || type}`);
+    closeAllDropdowns();
+}
+
+/* ── Conectar dropdown de layout ─────────────────────── */
+const tbLayoutWrap = document.getElementById('tb-layout-wrap');
+if (tbLayoutWrap) {
+    tbLayoutWrap.querySelectorAll('.layout-opt').forEach(btn => {
+        btn.addEventListener('click', () => applyLayout(btn.dataset.layout));
+    });
+    tbLayoutWrap.querySelector('.tb-drop-main').addEventListener('click', e => {
+        e.stopPropagation();
+        const wasOpen = tbLayoutWrap.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) tbLayoutWrap.classList.add('open');
+    });
+}
+
+/* ════════════════════════════════════════════════════════
+   EVENTOS DE PANEL CONTEXTUAL
+════════════════════════════════════════════════════════ */
 document.getElementById('ctx-add-circle').addEventListener('click', () => { if (selectedId) addChildNode(selectedId, 'circle'); });
 document.getElementById('ctx-add-rect').addEventListener('click', () => { if (selectedId) addChildNode(selectedId, 'rect'); });
 document.getElementById('ctx-add-img-circle').addEventListener('click', () => { if (selectedId) addChildNode(selectedId, 'img-circle'); });
@@ -1600,6 +1829,8 @@ document.getElementById('btn-run-text-to-map').addEventListener('click', () => {
     closeTextModal();
     // Reusamos tu propia función para cargar los nuevos datos y auto-centrar
     loadFromData({ nodes: newNodes, nextId: Date.now() });
+    // Re-apply current layout to eliminate random overlapping
+    setTimeout(() => applyLayout(currentLayout), 100);
     toast('✅ ¡Mapa Generado con Éxito!');
 });
 

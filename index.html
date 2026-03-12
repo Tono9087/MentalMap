@@ -89,6 +89,41 @@
 
         <div class="tb-sep"></div>
 
+        <!-- Diseño / Layout dropdown -->
+        <div class="tb-drop-wrap" id="tb-layout-wrap">
+            <button class="tb-btn tb-drop-main" id="tb-layout-btn" title="Distribuir nodos">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/>
+                    <circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/>
+                    <line x1="12" y1="9" x2="4" y2="7"/><line x1="12" y1="9" x2="20" y2="7"/>
+                    <line x1="12" y1="15" x2="4" y2="17"/><line x1="12" y1="15" x2="20" y2="17"/>
+                </svg>
+                Diseño
+                <svg class="tb-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="tb-dropdown tb-layout-drop" id="tb-layout-drop">
+                <div class="tb-drop-label">Distribución</div>
+                <button class="tb-drop-opt layout-opt" id="layout-radial" data-layout="radial">
+                    <span class="layout-icon">🧠</span>
+                    <span class="layout-info"><b>Mapa Mental</b><small>Radial · nodo central</small></span>
+                </button>
+                <button class="tb-drop-opt layout-opt" id="layout-tree-tb" data-layout="tree-tb">
+                    <span class="layout-icon">🌳</span>
+                    <span class="layout-info"><b>Árbol</b><small>De arriba a abajo</small></span>
+                </button>
+                <button class="tb-drop-opt layout-opt" id="layout-sinoptico" data-layout="sinoptico">
+                    <span class="layout-icon">📊</span>
+                    <span class="layout-info"><b>Sinóptico</b><small>Izquierda a derecha</small></span>
+                </button>
+                <button class="tb-drop-opt layout-opt" id="layout-lista" data-layout="lista">
+                    <span class="layout-icon">📋</span>
+                    <span class="layout-info"><b>Lista</b><small>Esquema indentado</small></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="tb-sep"></div>
+
         <button class="tb-btn" id="btn-theme-panel" title="Personalizar Colores">🎨</button>
 
         <div class="tb-sep"></div>
