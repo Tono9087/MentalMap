@@ -88,9 +88,11 @@ function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageD
     nodeFontSize = null, nodeFontFamily = null,
     nodeFontBold = false, nodeFontItalic = false, nodeFontUnderline = false }) {
     id = id || uid();
-    const node = { id, label, x, y, shape, parentId, imageData, rootShape, nodeSize,
+    const node = {
+        id, label, x, y, shape, parentId, imageData, rootShape, nodeSize,
         nodeColor, nodeTextColor, nodeBorderColor, nodeFontSize, nodeFontFamily,
-        nodeFontBold, nodeFontItalic, nodeFontUnderline };
+        nodeFontBold, nodeFontItalic, nodeFontUnderline
+    };
     nodes[id] = node;
 
     const el = document.createElement('div');
@@ -381,10 +383,10 @@ function addChildNode(parentId, shape = 'circle') {
 
     const children = Object.values(nodes).filter(n => n.parentId === parentId);
     const count = children.length;
-    const MIN_ARC = 75;  // minimum px between node centers on the arc
-    const total = count + 1;
+    const MIN_ARC = 175;  // minimum px between node centers on the arc
+    const total = count + 2;
     const spreadAngle = (Math.PI * 2) / total;
-    const baseRadius = (parent.shape === 'root') ? 210 : 170;
+    const baseRadius = (parent.shape === 'root') ? 140 : 110;
     // Grow radius so each child gets at least MIN_ARC px of arc
     const radius = Math.max(baseRadius, (total * MIN_ARC) / (Math.PI * 2));
     const angle = -Math.PI / 2 + count * spreadAngle;
@@ -571,16 +573,33 @@ function onNodePointerMove(e) {
     const ny = wp.y - dragging.oy;
 
     const node = nodes[dragging.id];
+    const dx = nx - node.x;
+    const dy = ny - node.y;
+
     node.x = nx;
     node.y = ny;
 
     const el = canvasEl.querySelector(`[data-id="${dragging.id}"]`);
     if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
 
+    // Mover toda la rama (hijos recursivamente)
+    const movedIds = new Set([dragging.id]);
+    function moveDescendants(parentId) {
+        Object.values(nodes).filter(n => n.parentId === parentId).forEach(child => {
+            child.x += dx;
+            child.y += dy;
+            const childEl = canvasEl.querySelector(`[data-id="${child.id}"]`);
+            if (childEl) { childEl.style.left = child.x + 'px'; childEl.style.top = child.y + 'px'; }
+            movedIds.add(child.id);
+            moveDescendants(child.id);
+        });
+    }
+    moveDescendants(dragging.id);
+
     for (const path of Object.values(edges)) {
         const f = path.dataset.from;
         const t = path.dataset.to;
-        if (f === dragging.id || t === dragging.id) updateEdge(f, t);
+        if (movedIds.has(f) || movedIds.has(t)) updateEdge(f, t);
     }
 }
 
@@ -715,7 +734,7 @@ function restoreUIAfterExport(oldSel) {
 /** Resuelve un color CSS (puede ser var() o hex o rgb) al valor real */
 function resolveCssColor(varName, fallback) {
     const val = getComputedStyle(document.documentElement)
-                    .getPropertyValue(varName).trim();
+        .getPropertyValue(varName).trim();
     return val || fallback;
 }
 
@@ -805,7 +824,7 @@ async function renderMapToCanvas() {
 
     // 2. Crear canvas
     const canvas = document.createElement('canvas');
-    canvas.width  = Math.ceil(contentW * RENDER_SCALE);
+    canvas.width = Math.ceil(contentW * RENDER_SCALE);
     canvas.height = Math.ceil(contentH * RENDER_SCALE);
     const ctx = canvas.getContext('2d');
     ctx.scale(RENDER_SCALE, RENDER_SCALE);
@@ -816,14 +835,14 @@ async function renderMapToCanvas() {
 
     // 4. Colores del tema
     const C = {
-        surface:  resolveCssColor('--surface',  '#ffffff'),
-        border:   resolveCssColor('--border',   '#b0ada8'),
-        text:     resolveCssColor('--text',     '#1a1a1a'),
-        accent:   resolveCssColor('--accent',   '#4f46e5'),
-        accent2:  resolveCssColor('--accent2',  '#7c3aed'),
-        edge:     resolveCssColor('--edge',     '#8b8882'),
-        frameBg:  resolveCssColor('--frame-bg', '#eef0f8'),
-        frameBd:  resolveCssColor('--frame-border', '#a4a8c8'),
+        surface: resolveCssColor('--surface', '#ffffff'),
+        border: resolveCssColor('--border', '#b0ada8'),
+        text: resolveCssColor('--text', '#1a1a1a'),
+        accent: resolveCssColor('--accent', '#4f46e5'),
+        accent2: resolveCssColor('--accent2', '#7c3aed'),
+        edge: resolveCssColor('--edge', '#8b8882'),
+        frameBg: resolveCssColor('--frame-bg', '#eef0f8'),
+        frameBd: resolveCssColor('--frame-border', '#a4a8c8'),
     };
 
     // 5. Dibujar aristas (curvas de bezier)
@@ -831,13 +850,13 @@ async function renderMapToCanvas() {
     ctx.strokeStyle = C.edge;
     for (const [key, path] of Object.entries(edges)) {
         const fromId = path.dataset.from;
-        const toId   = path.dataset.to;
-        const from   = nodes[fromId];
-        const to     = nodes[toId];
+        const toId = path.dataset.to;
+        const from = nodes[fromId];
+        const to = nodes[toId];
         if (!from || !to) continue;
 
         const fx = from.x + offX, fy = from.y + offY;
-        const tx = to.x + offX,   ty = to.y + offY;
+        const tx = to.x + offX, ty = to.y + offY;
         const dx = tx - fx;
         const cx1 = fx + dx * 0.45;
         const cx2 = tx - dx * 0.45;
@@ -858,16 +877,16 @@ async function renderMapToCanvas() {
         const { w, h } = getNodeSize(node);
         const cx = node.x + offX;
         const cy = node.y + offY;
-        const x  = cx - w / 2;
-        const y  = cy - h / 2;
+        const x = cx - w / 2;
+        const y = cy - h / 2;
 
         // Leer colores custom del nodo (pueden ser inline styles)
         const domEl = canvasEl.querySelector(`[data-id="${node.id}"]`);
         const lblEl = domEl ? (domEl.querySelector('.node-label') || domEl.querySelector('.node-caption')) : null;
 
-        let fillColor   = node.nodeColor || C.surface;
+        let fillColor = node.nodeColor || C.surface;
         let strokeColor = node.nodeBorderColor || C.border;
-        let textColor   = (node.nodeTextColor || (lblEl && lblEl.style.color)) || C.text;
+        let textColor = (node.nodeTextColor || (lblEl && lblEl.style.color)) || C.text;
 
         // Leer colores inline reales del DOM (más fiable)
         if (domEl) {
@@ -900,7 +919,7 @@ async function renderMapToCanvas() {
                 ctx.closePath();
             } else if (rs === 'root-hexagon') {
                 ctx.beginPath();
-                const pts = [[.5,0],[1,.25],[1,.75],[.5,1],[0,.75],[0,.25]];
+                const pts = [[.5, 0], [1, .25], [1, .75], [.5, 1], [0, .75], [0, .25]];
                 pts.forEach(([px, py], i) => {
                     const hx = x + px * w, hy = y + py * h;
                     i === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
@@ -1043,7 +1062,7 @@ function exportPNG() {
             a.click();
             document.body.removeChild(a);
             toast('🖼 Imagen PNG exportada con éxito');
-        } catch(err) {
+        } catch (err) {
             restoreUIAfterExport(oldSel);
             console.error('Export PNG error:', err);
             toast('❌ Error al generar la imagen');
@@ -1072,12 +1091,12 @@ function exportPDF() {
 
                 // Dimensiones A4 en mm
                 const A4_SHORT = 210;
-                const A4_LONG  = 297;
-                const MARGIN   = 15; // margen en cada lado
+                const A4_LONG = 297;
+                const MARGIN = 15; // margen en cada lado
 
                 // Elegir orientación según la proporción del contenido
                 const orientation = contentW >= contentH ? 'landscape' : 'portrait';
-                const pageW = orientation === 'landscape' ? A4_LONG  : A4_SHORT;
+                const pageW = orientation === 'landscape' ? A4_LONG : A4_SHORT;
                 const pageH = orientation === 'landscape' ? A4_SHORT : A4_LONG;
 
                 // Área disponible dentro de los márgenes
@@ -1085,9 +1104,9 @@ function exportPDF() {
                 const availH = pageH - MARGIN * 2;
 
                 // Escalar para que quepa, pero sin ampliar si ya es más pequeño
-                const scale  = Math.min(availW / contentW, availH / contentH, 1);
-                const drawW  = contentW * scale;
-                const drawH  = contentH * scale;
+                const scale = Math.min(availW / contentW, availH / contentH, 1);
+                const drawW = contentW * scale;
+                const drawH = contentH * scale;
 
                 // Centrar en la hoja
                 const xOff = (pageW - drawW) / 2;
@@ -1108,7 +1127,7 @@ function exportPDF() {
                 script.onerror = () => toast('❌ No se pudo cargar jsPDF');
                 document.head.appendChild(script);
             }
-        } catch(err) {
+        } catch (err) {
             restoreUIAfterExport(oldSel);
             console.error('Export PDF error:', err);
             toast('❌ Error al generar el PDF');
@@ -1217,7 +1236,7 @@ document.getElementById('btn-import').addEventListener('click', () => { closeAll
 jsonFileInput.addEventListener('change', importJSON);
 
 /* ─── Dropdown genérico: Nodo y Marco ────────────────── */
-const tbNodeWrap  = document.getElementById('tb-node-wrap');
+const tbNodeWrap = document.getElementById('tb-node-wrap');
 const tbFrameWrap = document.getElementById('tb-frame-wrap');
 
 function closeAllDropdowns() {
@@ -1239,7 +1258,7 @@ function closeAllDropdowns() {
 const exportWrap = document.getElementById('export-wrap');
 const exportDropdown = document.getElementById('export-dropdown');
 
-function openExportDropdown()  { exportWrap.classList.add('open'); }
+function openExportDropdown() { exportWrap.classList.add('open'); }
 function closeExportDropdown() { exportWrap.classList.remove('open'); }
 
 document.getElementById('btn-export').addEventListener('click', e => {
@@ -1318,7 +1337,7 @@ document.querySelectorAll('.tb-root-shape').forEach(btn => {
 
 /* Conectar botones de forma de nodo normal */
 document.getElementById('np-shape-circle').addEventListener('click', () => changeNodeShape('circle'));
-document.getElementById('np-shape-rect').addEventListener('click',   () => changeNodeShape('rect'));
+document.getElementById('np-shape-rect').addEventListener('click', () => changeNodeShape('rect'));
 
 /* ─── Cambiar tamaño de nodo seleccionado ────────────── */
 function changeNodeSize(size) {
@@ -1371,41 +1390,45 @@ function calcRadial() {
 
         const sizes = ch.map(c => Math.max(subtreeCount(c.id), 1));
         const total = sizes.reduce((a, b) => a + b, 0);
-        const absSpan = Math.max(Math.abs(angleSpan), 0.25);
+        let effSpan = Math.max(Math.abs(angleSpan), 0.5);
+        let radius = Math.max(baseRadius, (total * 115) / effSpan, (ch.length * 140) / effSpan);
 
-        // Constraint 1: each node-unit gets at least 90px of arc
-        const rLeaf = (total * 90) / absSpan;
-        // Constraint 2: each direct child gets at least 135px of arc (prevents overlap of wide nodes)
-        const rChild = (ch.length * 135) / absSpan;
-        const radius = Math.max(baseRadius, rLeaf, rChild);
+        // Constraint: Don't let the radial distance grow uncontrollably (keep distance moderate)
+        const maxRadius = Math.max(baseRadius, 370);
+        if (radius > maxRadius) {
+            radius = maxRadius;
+            // Expand the effective angle span so they don't overlap too much when radius is capped
+            effSpan = Math.max(effSpan, (ch.length * 140) / radius);
+            effSpan = Math.min(effSpan, Math.PI * 1.95); // Cap the expansion
+        }
 
-        let curAngle = startAngle;
+        // Center the new expanded span around the original allocated angle
+        let curAngle = startAngle - (effSpan - angleSpan) / 2;
+        
         ch.forEach((child, i) => {
             const frac = sizes[i] / total;
-            const mid = curAngle + (frac * angleSpan) / 2;
+            const mid = curAngle + (frac * effSpan) / 2;
             const x = parentX + Math.cos(mid) * radius;
             const y = parentY + Math.sin(mid) * radius;
             result.push({ id: child.id, x, y });
 
-            const nextBase = Math.max(radius * 0.5, 120);
-            // Cap angular spread to 1.3pi (234 deg) to prevent wrapping backward into parent
-            const childSpan = Math.min(frac * angleSpan, Math.PI * 1.3);
-            // Center the new sub-arc around 'mid'
+            const nextBase = Math.max(radius * 0.4, 90);
+            const childSpan = Math.min(frac * effSpan, Math.PI * 1.3);
             const childStart = mid - (childSpan / 2);
             place(child.id, x, y, childStart, childSpan, nextBase);
-            
-            curAngle += frac * angleSpan;
+
+            curAngle += frac * effSpan;
         });
     }
 
-    place('root', 0, 0, -Math.PI, Math.PI * 2, 160);
+    place('root', 0, 0, -Math.PI, Math.PI * 2, 110);
     return result;
 }
 
 function calcTreeTB() {
     const result = [];
-    const V_GAP = 100; // espacio vertical por nodo (aumentado para evitar overlap)
-    const H_GAP = 190; // distancia entre niveles (profundidad)
+    const V_GAP = 180; // espacio vertical por nodo (aumentado para evitar overlap)
+    const H_GAP = 120; // distancia entre niveles (profundidad)
 
     function assign(id, depth, yStart) {
         const size = subtreeCount(id); // todos los nodos del subárbol
@@ -1426,8 +1449,8 @@ function calcTreeTB() {
 
 function calcSinoptico() {
     const result = [];
-    const LEVEL_GAP = 220; // distancia horizontal entre niveles (aumentado)
-    const NODE_GAP  = 95;  // espacio vertical por nodo (aumentado para evitar overlap)
+    const LEVEL_GAP = 140; // distancia horizontal entre niveles (aumentado)
+    const NODE_GAP = 180;  // espacio vertical por nodo (aumentado para evitar overlap)
 
     function assign(id, depth, yStart) {
         const size = subtreeCount(id); // todos los nodos del subárbol
@@ -1448,9 +1471,9 @@ function calcSinoptico() {
 
 function calcLista() {
     const result = [];
-    const ROW_GAP = 85;
-    const INDENT  = 200;
-    const total   = Object.values(nodes).length;
+    const ROW_GAP = 150;
+    const INDENT = 120;
+    const total = Object.values(nodes).length;
     let curY = -(total * ROW_GAP) / 2;
 
     function assign(id, depth) {
@@ -1530,10 +1553,10 @@ function applyLayout(type) {
 
     let targets;
     switch (type) {
-        case 'radial':    targets = calcRadial();    break;
-        case 'tree-tb':   targets = calcTreeTB();    break;
+        case 'radial': targets = calcRadial(); break;
+        case 'tree-tb': targets = calcTreeTB(); break;
         case 'sinoptico': targets = calcSinoptico(); break;
-        case 'lista':     targets = calcLista();     break;
+        case 'lista': targets = calcLista(); break;
         default: return;
     }
 
@@ -1867,23 +1890,23 @@ function applyNodeStyles(el, node) {
     if (!el || !node) return;
     const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
 
-    if (node.nodeColor)       el.style.background = node.nodeColor;
-    if (node.nodeTextColor && lbl)  lbl.style.color = node.nodeTextColor;
+    if (node.nodeColor) el.style.background = node.nodeColor;
+    if (node.nodeTextColor && lbl) lbl.style.color = node.nodeTextColor;
     if (node.nodeBorderColor) { el.style.borderColor = node.nodeBorderColor; }
-    if (node.nodeFontSize && lbl)   lbl.style.fontSize = node.nodeFontSize + 'px';
+    if (node.nodeFontSize && lbl) lbl.style.fontSize = node.nodeFontSize + 'px';
     if (node.nodeFontFamily && lbl) lbl.style.fontFamily = node.nodeFontFamily;
     if (lbl) {
-        lbl.style.fontWeight    = node.nodeFontBold      ? '700' : '';
-        lbl.style.fontStyle     = node.nodeFontItalic    ? 'italic' : '';
+        lbl.style.fontWeight = node.nodeFontBold ? '700' : '';
+        lbl.style.fontStyle = node.nodeFontItalic ? 'italic' : '';
         lbl.style.textDecoration = node.nodeFontUnderline ? 'underline' : '';
     }
     // Size override (px-level, bypasses CSS class sizes)
     if (node.nodeCustomSize) {
         if (node.shape === 'circle' || node.shape === 'root') {
-            el.style.width  = node.nodeCustomSize + 'px';
+            el.style.width = node.nodeCustomSize + 'px';
             el.style.height = node.nodeCustomSize + 'px';
         } else if (node.shape === 'rect') {
-            el.style.width  = node.nodeCustomSize + 'px';
+            el.style.width = node.nodeCustomSize + 'px';
             el.style.height = Math.round(node.nodeCustomSize * 0.45) + 'px';
         }
     }
@@ -1912,18 +1935,18 @@ function syncPreview(previewId, colorVal) {
 /* ─── Palettes for the panel swatches ───────────────── */
 const NP_PALETTES = {
     bg: ['#ffffff', '#f0f4ff', '#fffbe6', '#fce7f3', '#e0fce0',
-         '#1a1a2e', '#4f46e5', '#7c3aed', '#ef4444', '#10b981'],
+        '#1a1a2e', '#4f46e5', '#7c3aed', '#ef4444', '#10b981'],
     text: ['#1a1a1a', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
-           '#f59e0b', '#ffffff', '#a0a0a0', '#374151', '#0ea5e9'],
+        '#f59e0b', '#ffffff', '#a0a0a0', '#374151', '#0ea5e9'],
     border: ['#b0ada8', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
-             '#f59e0b', '#0ea5e9', '#374151', 'transparent', '#1a1a1a'],
+        '#f59e0b', '#0ea5e9', '#374151', 'transparent', '#1a1a1a'],
 };
 
 function buildNpSwatches(containerId, colorInputId, previewId, applyFn) {
     const container = document.getElementById(containerId);
-    const input     = document.getElementById(colorInputId);
-    const key       = containerId.replace('np-', '').replace('-swatches', '');
-    const palette   = NP_PALETTES[key] || [];
+    const input = document.getElementById(colorInputId);
+    const key = containerId.replace('np-', '').replace('-swatches', '');
+    const palette = NP_PALETTES[key] || [];
 
     palette.forEach(c => {
         const sw = document.createElement('div');
@@ -1975,7 +1998,7 @@ function npApplyBorderColor(val) {
 
 /* ─── Show / hide / sync ─────────────────────────────── */
 function showPropsPanel() { nodePropsEl.classList.add('visible'); }
-function hidePropsPanel()  { nodePropsEl.classList.remove('visible'); }
+function hidePropsPanel() { nodePropsEl.classList.remove('visible'); }
 
 function syncPropsPanel(id) {
     const node = nodes[id];
@@ -1986,8 +2009,8 @@ function syncPropsPanel(id) {
 
     // ─── Mostrar selector de forma correcto ───
     const isRoot = (id === 'root');
-    const isImg  = isImageShape(node.shape);
-    document.getElementById('np-shape-root').style.display = isRoot  ? 'flex' : 'none';
+    const isImg = isImageShape(node.shape);
+    document.getElementById('np-shape-root').style.display = isRoot ? 'flex' : 'none';
     document.getElementById('np-shape-text').style.display = (!isRoot && !isImg) ? 'flex' : 'none';
     // Marcar forma activa en nodos normales
     if (!isRoot && !isImg) {
@@ -2004,16 +2027,16 @@ function syncPropsPanel(id) {
     if (borderSection) borderSection.style.display = isRoot ? 'none' : '';
 
     /* ── Colors ── */
-    const bgVal     = el ? (el.style.background || computedHex(el, 'backgroundColor')) : '#ffffff';
-    const textVal   = lbl ? (lbl.style.color || computedHex(lbl, 'color')) : '#1a1a1a';
+    const bgVal = el ? (el.style.background || computedHex(el, 'backgroundColor')) : '#ffffff';
+    const textVal = lbl ? (lbl.style.color || computedHex(lbl, 'color')) : '#1a1a1a';
     const borderVal = el ? (el.style.borderColor || computedHex(el, 'borderColor')) : '#b0ada8';
 
-    document.getElementById('np-bg-color').value     = bgVal.startsWith('#') ? bgVal.substring(0,7) : '#ffffff';
-    document.getElementById('np-text-color').value   = textVal.startsWith('#') ? textVal.substring(0,7) : '#1a1a1a';
-    document.getElementById('np-border-color').value = borderVal.startsWith('#') ? borderVal.substring(0,7) : '#b0ada8';
+    document.getElementById('np-bg-color').value = bgVal.startsWith('#') ? bgVal.substring(0, 7) : '#ffffff';
+    document.getElementById('np-text-color').value = textVal.startsWith('#') ? textVal.substring(0, 7) : '#1a1a1a';
+    document.getElementById('np-border-color').value = borderVal.startsWith('#') ? borderVal.substring(0, 7) : '#b0ada8';
 
-    syncPreview('np-bg-preview',     bgVal);
-    syncPreview('np-text-preview',   textVal);
+    syncPreview('np-bg-preview', bgVal);
+    syncPreview('np-text-preview', textVal);
     syncPreview('np-border-preview', borderVal);
 
     /* ── Node size ── */
@@ -2045,16 +2068,16 @@ function syncPropsPanel(id) {
     if (!matched) sel.selectedIndex = 0;
 
     /* ── Text style ── */
-    document.getElementById('np-bold').classList.toggle('active',      !!node.nodeFontBold);
-    document.getElementById('np-italic').classList.toggle('active',    !!node.nodeFontItalic);
+    document.getElementById('np-bold').classList.toggle('active', !!node.nodeFontBold);
+    document.getElementById('np-italic').classList.toggle('active', !!node.nodeFontItalic);
     document.getElementById('np-underline').classList.toggle('active', !!node.nodeFontUnderline);
 
     showPropsPanel();
 }
 
 /* ─── Build swatches (only once) ─────────────────────── */
-buildNpSwatches('np-bg-swatches',     'np-bg-color',     'np-bg-preview',     npApplyBg);
-buildNpSwatches('np-text-swatches',   'np-text-color',   'np-text-preview',   npApplyTextColor);
+buildNpSwatches('np-bg-swatches', 'np-bg-color', 'np-bg-preview', npApplyBg);
+buildNpSwatches('np-text-swatches', 'np-text-color', 'np-text-preview', npApplyTextColor);
 buildNpSwatches('np-border-swatches', 'np-border-color', 'np-border-preview', npApplyBorderColor);
 
 /* ─── Color input events ─────────────────────────────── */
@@ -2092,10 +2115,10 @@ document.getElementById('np-node-size').addEventListener('input', e => {
     if (!el) return;
 
     if (node.shape === 'circle' || node.shape === 'root') {
-        el.style.width  = sz + 'px';
+        el.style.width = sz + 'px';
         el.style.height = sz + 'px';
     } else if (node.shape === 'rect') {
-        el.style.width  = sz + 'px';
+        el.style.width = sz + 'px';
         el.style.height = Math.round(sz * 0.45) + 'px';
     } else {
         // image frames: resize the img-frame child
@@ -2144,13 +2167,13 @@ function toggleTextStyle(prop, elId) {
     if (!el) return;
     const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
     if (!lbl) return;
-    if (prop === 'nodeFontBold')      lbl.style.fontWeight    = node[prop] ? '700' : '';
-    if (prop === 'nodeFontItalic')    lbl.style.fontStyle     = node[prop] ? 'italic' : '';
+    if (prop === 'nodeFontBold') lbl.style.fontWeight = node[prop] ? '700' : '';
+    if (prop === 'nodeFontItalic') lbl.style.fontStyle = node[prop] ? 'italic' : '';
     if (prop === 'nodeFontUnderline') lbl.style.textDecoration = node[prop] ? 'underline' : '';
 }
 
-document.getElementById('np-bold').addEventListener('click',      () => toggleTextStyle('nodeFontBold', 'np-bold'));
-document.getElementById('np-italic').addEventListener('click',    () => toggleTextStyle('nodeFontItalic', 'np-italic'));
+document.getElementById('np-bold').addEventListener('click', () => toggleTextStyle('nodeFontBold', 'np-bold'));
+document.getElementById('np-italic').addEventListener('click', () => toggleTextStyle('nodeFontItalic', 'np-italic'));
 document.getElementById('np-underline').addEventListener('click', () => toggleTextStyle('nodeFontUnderline', 'np-underline'));
 
 /* ─── Close button ───────────────────────────────────── */
