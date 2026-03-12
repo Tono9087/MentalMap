@@ -795,9 +795,8 @@ async function renderMapToCanvas() {
     const ctx = canvas.getContext('2d');
     ctx.scale(RENDER_SCALE, RENDER_SCALE);
 
-    // 3. Fondo
-    const bgColor = resolveCssColor('--bg', '#f5f4f2');
-    ctx.fillStyle = bgColor;
+    // 3. Fondo siempre blanco en el export
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, contentW, contentH);
 
     // 4. Colores del tema
