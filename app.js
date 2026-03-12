@@ -582,7 +582,7 @@ function initDrag(id, e) {
     window.addEventListener('pointerup', onNodePointerUp);
 }
 
-/* Click sobre el cuerpo del nodo → solo seleccionar */
+/* Click sobre el cuerpo del nodo → seleccionar (y arrastrar en touch) */
 function onNodePointerDown(e) {
     const skip = ['add-btn', 'del-btn', 'drag-handle', 'node-input', 'caption-input', 'img-placeholder', 'img-change-overlay'];
     if (skip.some(cls => e.target.classList.contains(cls))) return;
@@ -590,7 +590,12 @@ function onNodePointerDown(e) {
     e.stopPropagation();
     const id = e.currentTarget.dataset.id;
     selectNode(id);
-    // El arrastre solo se inicia desde el drag-handle (ver createNode)
+
+    // En dispositivos táctiles, el arrastre inicia al tocar cualquier parte del nodo
+    if (e.pointerType === 'touch') {
+        initDrag(id, e);
+    }
+    // En PC, el arrastre solo se inicia desde el drag-handle (ver createNode)
 }
 
 function onNodePointerMove(e) {
@@ -676,20 +681,77 @@ function onPanUp() {
     window.removeEventListener('pointerup', onPanUp);
 }
 
-canvasWrap.addEventListener('wheel', e => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 0.909;
+/* ─── Zoom reutilizable (centrado en un punto de pantalla) ─── */
+function zoomAtPoint(factor, screenX, screenY) {
     const newScale = Math.min(3, Math.max(0.15, scale * factor));
-
     const rect = canvasWrap.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
+    const cx = screenX - rect.left;
+    const cy = screenY - rect.top;
 
     pan.x = cx - (cx - pan.x) * (newScale / scale);
     pan.y = cy - (cy - pan.y) * (newScale / scale);
     scale = newScale;
     applyTransform();
+}
+
+/* ─── Zoom centrado en el viewport (para botones) ─── */
+function zoomCenter(factor) {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    zoomAtPoint(factor, cx, cy);
+}
+
+canvasWrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.909;
+    zoomAtPoint(factor, e.clientX, e.clientY);
 }, { passive: false });
+
+/* ─── Botones de Zoom +/- ─── */
+document.getElementById('btn-zoom-in').addEventListener('click', () => zoomCenter(1.25));
+document.getElementById('btn-zoom-out').addEventListener('click', () => zoomCenter(0.8));
+
+/* ─── Pinch-to-Zoom táctil ─── */
+let pinchStartDist = 0;
+let pinchStartScale = 1;
+let pinchActive = false;
+
+canvasWrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        pinchActive = true;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStartDist = Math.hypot(dx, dy);
+        pinchStartScale = scale;
+    }
+}, { passive: false });
+
+canvasWrap.addEventListener('touchmove', e => {
+    if (pinchActive && e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const factor = dist / pinchStartDist;
+        const newScale = Math.min(3, Math.max(0.15, pinchStartScale * factor));
+
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const rect = canvasWrap.getBoundingClientRect();
+        const cx = midX - rect.left;
+        const cy = midY - rect.top;
+
+        pan.x = cx - (cx - pan.x) * (newScale / scale);
+        pan.y = cy - (cy - pan.y) * (newScale / scale);
+        scale = newScale;
+        applyTransform();
+    }
+}, { passive: false });
+
+canvasWrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinchActive = false;
+}, { passive: true });
 
 /* ═══════════════════════════════════════════════════════
    CENTRAR MAPA

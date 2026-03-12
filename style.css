@@ -2018,3 +2018,150 @@ svg#connections {
 [data-theme="dark"] .np-swatch {
     border-color: rgba(255,255,255,.1);
 }
+
+/* ═══════════════════════════════════════════════════════
+   ZOOM CONTROLS (floating bottom-right)
+═══════════════════════════════════════════════════════ */
+#zoom-controls {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 120;
+}
+
+#zoom-controls button {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    transition: background var(--t), transform var(--t), box-shadow var(--t);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+#zoom-controls button:hover {
+    background: var(--accent);
+    color: #fff;
+    transform: scale(1.08);
+    box-shadow: var(--shadow-lg);
+}
+
+#zoom-controls button:active {
+    transform: scale(0.95);
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE RESPONSIVE OVERRIDES
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Toolbar: scroll horizontal, más compacto */
+    #toolbar {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 4px;
+        padding: 6px 10px;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+    }
+    #toolbar::-webkit-scrollbar {
+        display: none;
+    }
+    .tb-btn {
+        font-size: 11px;
+        padding: 5px 8px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .tb-brand {
+        font-size: 13px;
+    }
+    .tb-sep {
+        display: none;
+    }
+
+    /* Context panel: más compacto */
+    #ctx-panel {
+        bottom: 14px;
+        padding: 6px 8px;
+        gap: 3px;
+        max-width: 96vw;
+        overflow-x: auto;
+        scrollbar-width: none;
+        flex-wrap: nowrap;
+    }
+    #ctx-panel::-webkit-scrollbar {
+        display: none;
+    }
+    .ctx-btn {
+        font-size: 11px;
+        padding: 5px 8px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Node Props panel: full-width bottom sheet */
+    #node-props {
+        left: 0;
+        right: 0;
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        transform: translateY(110%);
+        border-radius: 20px 20px 0 0;
+        max-height: 55vh;
+    }
+    #node-props.visible {
+        transform: translateY(0);
+    }
+
+    /* Theme panel: full-width */
+    #theme-panel {
+        right: 10px;
+        left: 10px;
+        width: auto;
+        top: 60px;
+    }
+
+    /* Hint: hide on mobile */
+    #hint {
+        display: none;
+    }
+
+    /* Zoom controls always visible */
+    #zoom-controls {
+        bottom: 16px;
+        right: 16px;
+    }
+
+    /* Drag handles: bigger for touch */
+    .drag-handle {
+        width: 18px;
+        height: 18px;
+        font-size: 12px;
+    }
+
+    /* Add/Delete buttons: bigger for touch */
+    .add-btn, .del-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 13px;
+    }
+}
