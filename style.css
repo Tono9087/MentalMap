@@ -914,6 +914,97 @@ svg#connections {
     flex-shrink: 0;
 }
 
+/* ─── Toolbar dropdowns genéricos (Nodo / Marco) ─────── */
+.tb-drop-wrap {
+    position: relative;
+}
+
+.tb-drop-main {
+    gap: 4px;
+}
+
+.tb-chevron {
+    transition: transform 0.2s cubic-bezier(.34,1.3,.64,1);
+    flex-shrink: 0;
+    opacity: .6;
+}
+
+.tb-drop-wrap.open .tb-chevron {
+    transform: rotate(180deg);
+}
+
+.tb-drop-wrap.open .tb-drop-main {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.tb-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    min-width: 150px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: var(--shadow-lg);
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.34,1.3,.64,1);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tb-drop-wrap.open .tb-dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.tb-drop-opt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 9px;
+    white-space: nowrap;
+    transition: background var(--t), color var(--t);
+    text-align: left;
+    width: 100%;
+}
+
+.tb-drop-opt:hover {
+    background: rgba(99,102,241,.1);
+    color: var(--accent);
+}
+
+.tb-drop-opt svg { flex-shrink: 0; opacity: .75; }
+.tb-drop-opt:hover svg { opacity: 1; }
+
+[data-theme="dark"] .tb-dropdown {
+    background: #1e1e28;
+    border-color: #3c3c50;
+}
+
+[data-theme="dark"] .tb-drop-opt {
+    color: var(--text);
+}
+
+[data-theme="dark"] .tb-drop-opt:hover {
+    background: rgba(99,102,241,.18);
+    color: #a5b4fc;
+}
+
 /* ─── Export dropdown ─────────────────────────────── */
 .tb-export-wrap {
     position: relative;
@@ -1171,22 +1262,72 @@ svg#connections {
 }
 
 /* Botones de forma root activo */
-.tb-btn.tb-root-shape {
+.tb-btn.tb-root-shape,
+.np-shape-btn.tb-root-shape {
     font-size: 13px;
     padding: 6px 10px;
     color: var(--muted);
 }
 
-.tb-btn.tb-root-shape:hover {
+.tb-btn.tb-root-shape:hover,
+.np-shape-btn.tb-root-shape:hover {
     color: var(--accent);
     background: rgba(99, 102, 241, .08);
 }
 
-.tb-btn.tb-root-shape.active {
+.tb-btn.tb-root-shape.active,
+.np-shape-btn.tb-root-shape.active {
     color: #fff;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     border-radius: 50%;
 }
+
+/* ─── Shape picker en panel de propiedades ───────────── */
+.np-shape-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.np-shape-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background var(--t), border-color var(--t), color var(--t);
+    flex-shrink: 0;
+}
+
+.np-shape-btn:hover {
+    border-color: var(--accent);
+    background: rgba(99,102,241,.1);
+    color: var(--accent);
+}
+
+.np-shape-btn.active {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+}
+
+.np-root-img-btn {
+    font-size: 14px;
+    border-style: dashed;
+}
+
+.np-root-img-btn:hover {
+    border-style: solid;
+}
+
 
 /* ═══════════════════════════════════════════════════════
    TOAST

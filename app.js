@@ -1167,44 +1167,54 @@ function addToSelected(shape) {
     addChildNode(pid, shape);
 }
 
-document.getElementById('btn-add-circle').addEventListener('click', () => addToSelected('circle'));
-document.getElementById('btn-add-rect').addEventListener('click', () => addToSelected('rect'));
-document.getElementById('btn-add-img-circle').addEventListener('click', () => addToSelected('img-circle'));
-document.getElementById('btn-add-img-square').addEventListener('click', () => addToSelected('img-square'));
-document.getElementById('btn-add-img-rect').addEventListener('click', () => addToSelected('img-rect'));
+document.getElementById('btn-add-circle').addEventListener('click', () => { closeAllDropdowns(); addToSelected('circle'); });
+document.getElementById('btn-add-rect').addEventListener('click', () => { closeAllDropdowns(); addToSelected('rect'); });
+document.getElementById('btn-add-img-circle').addEventListener('click', () => { closeAllDropdowns(); addToSelected('img-circle'); });
+document.getElementById('btn-add-img-square').addEventListener('click', () => { closeAllDropdowns(); addToSelected('img-square'); });
+document.getElementById('btn-add-img-rect').addEventListener('click', () => { closeAllDropdowns(); addToSelected('img-rect'); });
 
 document.getElementById('btn-center').addEventListener('click', () => { centerMap(); toast('📐 Mapa centrado'); });
-document.getElementById('btn-export-json').addEventListener('click', exportJSON);
-document.getElementById('btn-import').addEventListener('click', () => jsonFileInput.click());
+document.getElementById('btn-export-json').addEventListener('click', () => { closeAllDropdowns(); exportJSON(); });
+document.getElementById('btn-import').addEventListener('click', () => { closeAllDropdowns(); jsonFileInput.click(); });
 jsonFileInput.addEventListener('change', importJSON);
 
-/* ─── Export dropdown toggle ────────────────────────────── */
+/* ─── Dropdown genérico: Nodo y Marco ────────────────── */
+const tbNodeWrap  = document.getElementById('tb-node-wrap');
+const tbFrameWrap = document.getElementById('tb-frame-wrap');
+
+function closeAllDropdowns() {
+    [tbNodeWrap, tbFrameWrap, exportWrap].forEach(w => w && w.classList.remove('open'));
+}
+
+[tbNodeWrap, tbFrameWrap].forEach(wrap => {
+    if (!wrap) return;
+    wrap.querySelector('.tb-drop-main').addEventListener('click', e => {
+        e.stopPropagation();
+        const wasOpen = wrap.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) wrap.classList.add('open');
+    });
+});
+
+/* ─── Export dropdown ────────────────────────────────── */
 const exportWrap = document.getElementById('export-wrap');
 const exportDropdown = document.getElementById('export-dropdown');
 
-function openExportDropdown() { exportWrap.classList.add('open'); }
+function openExportDropdown()  { exportWrap.classList.add('open'); }
 function closeExportDropdown() { exportWrap.classList.remove('open'); }
-function toggleExportDropdown() { exportWrap.classList.toggle('open'); }
 
 document.getElementById('btn-export').addEventListener('click', e => {
     e.stopPropagation();
-    toggleExportDropdown();
+    const wasOpen = exportWrap.classList.contains('open');
+    closeAllDropdowns();
+    if (!wasOpen) openExportDropdown();
 });
 
-document.getElementById('btn-export-png').addEventListener('click', () => {
-    closeExportDropdown();
-    exportPNG();
-});
+document.getElementById('btn-export-png').addEventListener('click', () => { closeAllDropdowns(); exportPNG(); });
+document.getElementById('btn-export-pdf').addEventListener('click', () => { closeAllDropdowns(); exportPDF(); });
 
-document.getElementById('btn-export-pdf').addEventListener('click', () => {
-    closeExportDropdown();
-    exportPDF();
-});
-
-// Cerrar dropdown al hacer clic fuera
-document.addEventListener('click', e => {
-    if (!exportWrap.contains(e.target)) closeExportDropdown();
-});
+// Cerrar todos los dropdowns al hacer clic fuera
+document.addEventListener('click', () => closeAllDropdowns());
 
 /* ─── Botón imagen en nodo raíz ──────────────────────── */
 document.getElementById('btn-root-img').addEventListener('click', () => triggerRootImageUpload());
@@ -1220,23 +1230,45 @@ function changeRootShape(newShape) {
     const rootEl = canvasEl.querySelector('[data-id="root"]');
     const rootNode = nodes['root'];
     if (!rootEl || !rootNode) return;
-
-    /* Quitar forma anterior */
     ROOT_SHAPES.forEach(s => rootEl.classList.remove(s));
-
-    /* Aplicar nueva forma */
     rootEl.classList.add(newShape);
     rootNode.rootShape = newShape;
     currentRootShape = newShape;
     updateRootShapeButtons(newShape);
-
     toast('✏️ Forma central cambiada');
 }
 
-/* Conectar botones de forma */
+/* ─── Cambiar forma de nodo normal (circle ↔ rect) ──── */
+function changeNodeShape(newShape) {
+    if (!selectedId || selectedId === 'root') return;
+    const node = nodes[selectedId];
+    if (!node || isImageShape(node.shape)) return;
+
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+
+    // Cambiar clase de forma
+    ['circle', 'rect'].forEach(s => el.classList.remove(s));
+    el.classList.add(newShape);
+    node.shape = newShape;
+
+    // Actualizar botones en el panel
+    document.querySelectorAll('#np-shape-text .np-shape-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.shape === newShape);
+    });
+
+    updateAllEdges();
+    toast('✏️ Forma cambiada');
+}
+
+/* Conectar botones de forma root (en panel de props) */
 document.querySelectorAll('.tb-root-shape').forEach(btn => {
     btn.addEventListener('click', () => changeRootShape(btn.dataset.shape));
 });
+
+/* Conectar botones de forma de nodo normal */
+document.getElementById('np-shape-circle').addEventListener('click', () => changeNodeShape('circle'));
+document.getElementById('np-shape-rect').addEventListener('click',   () => changeNodeShape('rect'));
 
 /* ─── Cambiar tamaño de nodo seleccionado ────────────── */
 function changeNodeSize(size) {
@@ -1245,14 +1277,10 @@ function changeNodeSize(size) {
     const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
     if (!el || !node) return;
 
-    /* Quitar tamaños anteriores */
     NODE_SIZES.forEach(s => el.classList.remove('size-' + s));
-
-    /* Aplicar nuevo */
     el.classList.add('size-' + size);
     node.nodeSize = size;
 
-    /* Actualizar botón activo en el ctx-panel */
     document.querySelectorAll('.ctx-size').forEach(b => {
         b.classList.toggle('active', b.dataset.size === size);
     });
@@ -1277,6 +1305,7 @@ document.getElementById('ctx-delete').addEventListener('click', () => {
 document.querySelectorAll('.ctx-size').forEach(btn => {
     btn.addEventListener('click', () => changeNodeSize(btn.dataset.size));
 });
+
 
 /* ═══════════════════════════════════════════════════════
    MODO OSCURO Y COLORES PERSONALIZADOS
@@ -1678,6 +1707,25 @@ function syncPropsPanel(id) {
 
     const el = canvasEl.querySelector(`[data-id="${id}"]`);
     const lbl = el ? (el.querySelector('.node-label') || el.querySelector('.node-caption')) : null;
+
+    // ─── Mostrar selector de forma correcto ───
+    const isRoot = (id === 'root');
+    const isImg  = isImageShape(node.shape);
+    document.getElementById('np-shape-root').style.display = isRoot  ? 'flex' : 'none';
+    document.getElementById('np-shape-text').style.display = (!isRoot && !isImg) ? 'flex' : 'none';
+    // Marcar forma activa en nodos normales
+    if (!isRoot && !isImg) {
+        document.querySelectorAll('#np-shape-text .np-shape-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.shape === node.shape);
+        });
+    }
+    // Marcar forma activa del root
+    if (isRoot) {
+        updateRootShapeButtons(node.rootShape || currentRootShape || 'root-circle');
+    }
+    // Ocultar borde para root (usa gradiente, no borde)
+    const borderSection = document.getElementById('np-border-section');
+    if (borderSection) borderSection.style.display = isRoot ? 'none' : '';
 
     /* ── Colors ── */
     const bgVal     = el ? (el.style.background || computedHex(el, 'backgroundColor')) : '#ffffff';

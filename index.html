@@ -23,150 +23,114 @@
 
         <span class="tb-brand">🧠 MindMap</span>
 
-        <!-- Forma central -->
-        <div class="tb-group">
-            <span class="tb-group-label">Central</span>
-            <button class="tb-btn tb-root-shape" id="root-shape-circle" title="Forma: Círculo" data-shape="root-circle">⬤</button>
-            <button class="tb-btn tb-root-shape" id="root-shape-square" title="Forma: Cuadrado" data-shape="root-square">■</button>
-            <button class="tb-btn tb-root-shape" id="root-shape-rect"   title="Forma: Rectángulo" data-shape="root-rect">▬</button>
-            <button class="tb-btn tb-root-shape" id="root-shape-diamond" title="Forma: Diamante" data-shape="root-diamond">◆</button>
-            <button class="tb-btn tb-root-shape" id="root-shape-hexagon" title="Forma: Hexágono" data-shape="root-hexagon">⬡</button>
-            <button class="tb-btn tb-frame" id="btn-root-img" title="Imagen en nodo central">
+        <!-- ＋ Nodo — dropdown compacto -->
+        <div class="tb-drop-wrap" id="tb-node-wrap">
+            <button class="tb-btn tb-drop-main" id="tb-node-btn" title="Agregar nodo de texto">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M3 16l5-5 4 4 3-3 6 6" />
+                    <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
                 </svg>
-                🖼 Foto
+                Nodo
+                <svg class="tb-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
+            <div class="tb-dropdown" id="tb-node-drop">
+                <button class="tb-drop-opt" id="btn-add-circle" title="Nodo circular (C)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/></svg>
+                    Círculo
+                </button>
+                <button class="tb-drop-opt" id="btn-add-rect" title="Nodo rectangular (R)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="7" width="18" height="10" rx="2"/></svg>
+                    Rectángulo
+                </button>
+            </div>
+        </div>
+
+        <!-- 🖼 Marco — dropdown compacto -->
+        <div class="tb-drop-wrap" id="tb-frame-wrap">
+            <button class="tb-btn tb-drop-main tb-frame" id="tb-frame-btn" title="Agregar marco de imagen">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/>
+                </svg>
+                Marco
+                <svg class="tb-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="tb-dropdown" id="tb-frame-drop">
+                <button class="tb-drop-opt" id="btn-add-img-circle" title="Marco circular (I)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>
+                    Circular
+                </button>
+                <button class="tb-drop-opt" id="btn-add-img-square" title="Marco cuadrado">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg>
+                    Cuadrado
+                </button>
+                <button class="tb-drop-opt" id="btn-add-img-rect" title="Marco panorámico">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 16l6-5 4 4 3-3 7 6"/></svg>
+                    Panorama
+                </button>
+            </div>
         </div>
 
         <div class="tb-sep"></div>
 
-        <!-- Nodos de texto -->
-        <div class="tb-group">
-            <span class="tb-group-label">Nodos</span>
-            <button class="tb-btn" id="btn-add-circle" title="Agregar nodo circular (C)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="12" cy="12" r="9" />
-                    <line x1="12" y1="8" x2="12" y2="16" />
-                    <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-                Círculo
-            </button>
-            <button class="tb-btn" id="btn-add-rect" title="Agregar nodo rectangular (R)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <rect x="3" y="7" width="18" height="10" rx="2" />
-                    <line x1="12" y1="3" x2="12" y2="7" />
-                    <line x1="12" y1="17" x2="12" y2="21" />
-                </svg>
-                Rect.
-            </button>
-        </div>
-
-        <div class="tb-sep"></div>
-
-        <!-- Marcos de imagen -->
-        <div class="tb-group">
-            <span class="tb-group-label">Marcos</span>
-            <button class="tb-btn tb-frame" id="btn-add-img-circle" title="Marco circular de imagen (I)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M3 16l5-5 4 4 3-3 6 6" />
-                </svg>
-                Círculo
-            </button>
-            <button class="tb-btn tb-frame" id="btn-add-img-square" title="Marco cuadrado de imagen">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <rect x="3" y="3" width="18" height="18" rx="3" />
-                    <path d="M3 16l5-5 4 4 3-3 6 6" />
-                </svg>
-                Cuadrado
-            </button>
-            <button class="tb-btn tb-frame" id="btn-add-img-rect" title="Marco panorámico de imagen">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <path d="M2 16l6-5 4 4 3-3 7 6" />
-                </svg>
-                Panorama
-            </button>
-        </div>
-
-        <div class="tb-sep"></div>
-
-        <!-- Herramientas -->
         <button class="tb-btn" id="btn-text-to-map" title="Generar mapa desde texto tabulado">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
                 <line x1="16" y1="13" x2="8" y2="13"></line>
                 <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
-            Importar Texto
+            Texto
         </button>
         <button class="tb-btn" id="btn-center" title="Centrar mapa (Ctrl+0)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+                <circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
             </svg>
             Centrar
         </button>
 
         <div class="tb-sep"></div>
 
-        <button class="tb-btn" id="btn-theme-panel" title="Personalizar Colores">🎨 Colores</button>
+        <button class="tb-btn" id="btn-theme-panel" title="Personalizar Colores">🎨</button>
 
         <div class="tb-sep"></div>
 
-        <!-- Botón Exportar con dropdown -->
+        <!-- Exportar dropdown -->
         <div class="tb-export-wrap" id="export-wrap">
-            <button class="tb-btn tb-export-main" id="btn-export" title="Opciones de exportación">
+            <button class="tb-btn tb-export-main" id="btn-export" title="Exportar">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="7 10 12 15 17 10" />
                     <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
                 Exportar
-                <svg class="tb-export-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="6 9 12 15 18 9"/>
-                </svg>
+                <svg class="tb-export-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="export-dropdown" id="export-dropdown">
-                <button class="export-opt" id="btn-export-png" title="Exportar como Imagen PNG">
+                <button class="export-opt" id="btn-export-png" title="Exportar PNG">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
-                    Exportar PNG
+                    PNG
                 </button>
-                <button class="export-opt" id="btn-export-pdf" title="Exportar como PDF">
+                <button class="export-opt" id="btn-export-pdf" title="Exportar PDF">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="9" y1="13" x2="15" y2="13"/>
-                        <line x1="9" y1="17" x2="12" y2="17"/>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                     </svg>
-                    Exportar PDF
+                    PDF
+                </button>
+                <button class="export-opt" id="btn-export-json" title="Guardar JSON">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Guardar
+                </button>
+                <button class="export-opt" id="btn-import" title="Abrir JSON">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Abrir
                 </button>
             </div>
         </div>
-        <button class="tb-btn" id="btn-export-json" title="Guardar proyecto (JSON)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Guardar
-        </button>
-        <button class="tb-btn" id="btn-import" title="Abrir proyecto (JSON)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            Abrir
-        </button>
 
         <div class="tb-sep"></div>
 
@@ -215,8 +179,31 @@
             <button class="np-close" id="np-close" title="Cerrar">✖</button>
         </div>
 
+        <!-- Forma del nodo -->
+        <div class="np-section" id="np-shape-section">
+            <span class="np-label">Forma</span>
+            <!-- Para nodos normales (circle / rect) -->
+            <div class="np-shape-row" id="np-shape-text">
+                <button class="np-shape-btn" id="np-shape-circle" data-shape="circle" title="Círculo">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                </button>
+                <button class="np-shape-btn" id="np-shape-rect" data-shape="rect" title="Rectángulo">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/></svg>
+                </button>
+            </div>
+            <!-- Para nodo raíz -->
+            <div class="np-shape-row" id="np-shape-root" style="display:none">
+                <button class="np-shape-btn tb-root-shape" id="root-shape-circle" data-shape="root-circle" title="Círculo">⬤</button>
+                <button class="np-shape-btn tb-root-shape" id="root-shape-square" data-shape="root-square" title="Cuadrado">■</button>
+                <button class="np-shape-btn tb-root-shape" id="root-shape-rect"   data-shape="root-rect"   title="Rectángulo">▬</button>
+                <button class="np-shape-btn tb-root-shape" id="root-shape-diamond" data-shape="root-diamond" title="Diamante">◆</button>
+                <button class="np-shape-btn tb-root-shape" id="root-shape-hexagon" data-shape="root-hexagon" title="Hexágono">⬡</button>
+                <button class="np-shape-btn np-root-img-btn" id="btn-root-img" title="Foto central">🖼</button>
+            </div>
+        </div>
+
         <!-- Color de fondo -->
-        <div class="np-section">
+        <div class="np-section" id="np-bg-section">
             <span class="np-label">Color de fondo</span>
             <div class="np-color-row">
                 <label class="np-color-swatch-input" title="Color libre">
@@ -240,7 +227,7 @@
         </div>
 
         <!-- Color de borde -->
-        <div class="np-section">
+        <div class="np-section" id="np-border-section">
             <span class="np-label">Color de borde</span>
             <div class="np-color-row">
                 <label class="np-color-swatch-input" title="Color libre">
