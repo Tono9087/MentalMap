@@ -1050,13 +1050,37 @@ function exportPDF() {
 
             function makePDF() {
                 const { jsPDF } = window.jspdf;
+
+                // Tamaño del contenido en mm (canvas generado a 2× escala)
                 const PX_TO_MM = 25.4 / 96;
-                // El canvas se generó a RENDER_SCALE=2, así que dividimos entre 2
-                const wMm = (imgW / 2) * PX_TO_MM;
-                const hMm = (imgH / 2) * PX_TO_MM;
-                const orientation = wMm >= hMm ? 'landscape' : 'portrait';
-                const pdf = new jsPDF({ orientation, unit: 'mm', format: [wMm, hMm] });
-                pdf.addImage(imgData, 'PNG', 0, 0, wMm, hMm, '', 'FAST');
+                const contentW = (imgW / 2) * PX_TO_MM;
+                const contentH = (imgH / 2) * PX_TO_MM;
+
+                // Dimensiones A4 en mm
+                const A4_SHORT = 210;
+                const A4_LONG  = 297;
+                const MARGIN   = 15; // margen en cada lado
+
+                // Elegir orientación según la proporción del contenido
+                const orientation = contentW >= contentH ? 'landscape' : 'portrait';
+                const pageW = orientation === 'landscape' ? A4_LONG  : A4_SHORT;
+                const pageH = orientation === 'landscape' ? A4_SHORT : A4_LONG;
+
+                // Área disponible dentro de los márgenes
+                const availW = pageW - MARGIN * 2;
+                const availH = pageH - MARGIN * 2;
+
+                // Escalar para que quepa, pero sin ampliar si ya es más pequeño
+                const scale  = Math.min(availW / contentW, availH / contentH, 1);
+                const drawW  = contentW * scale;
+                const drawH  = contentH * scale;
+
+                // Centrar en la hoja
+                const xOff = (pageW - drawW) / 2;
+                const yOff = (pageH - drawH) / 2;
+
+                const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+                pdf.addImage(imgData, 'PNG', xOff, yOff, drawW, drawH, '', 'FAST');
                 pdf.save('mapa-mental.pdf');
                 toast('📄 PDF exportado con éxito');
             }
