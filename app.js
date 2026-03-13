@@ -202,7 +202,6 @@ function buildTextNode(el, node) {
             <circle cx="12" cy="13" r="4"/>
         </svg>
         <span>Cambiar foto</span>`;
-        overlay.addEventListener('click', e => { e.stopPropagation(); triggerRootImageUpload(); });
         el.appendChild(overlay);
     }
 
@@ -236,8 +235,7 @@ function buildImageNode(el, node) {
       <circle cx="8.5" cy="8.5" r="1.5"/>
       <polyline points="21 15 16 10 5 21"/>
     </svg>
-    <span>Clic para subir<br>o Ctrl+V para pegar</span>`;
-    ph.addEventListener('click', e => { e.stopPropagation(); triggerImageUpload(node.id); });
+    <span>Selecciona el nodo<br>o Ctrl+V para pegar</span>`;
     frame.appendChild(ph);
 
     /* Overlay de cambio (visible al hover cuando hay imagen) */
@@ -250,7 +248,6 @@ function buildImageNode(el, node) {
     </svg>
     <span>Cambiar imagen</span>`;
     overlay.style.display = node.imageData ? 'flex' : 'none';
-    overlay.addEventListener('click', e => { e.stopPropagation(); triggerImageUpload(node.id); });
     frame.appendChild(overlay);
 
     /* Drag & drop de archivos sobre el marco */
@@ -448,6 +445,14 @@ function selectNode(id) {
         document.querySelectorAll('.ctx-size').forEach(b => {
             b.classList.toggle('active', b.dataset.size === currentSize);
         });
+        
+        /* Mostrar u ocultar la opción de "Subir Imagen" */
+        const isImg = node ? isImageShape(node.shape) : false;
+        const isRoot = id === 'root';
+        const uploadBtn = document.getElementById('ctx-upload-img');
+        const uploadSep = document.getElementById('ctx-sep-upload');
+        if (uploadBtn) uploadBtn.style.display = (isImg || isRoot) ? 'block' : 'none';
+        if (uploadSep) uploadSep.style.display = (isImg || isRoot) ? 'block' : 'none';
 
         /* Mostrar y sincronizar el panel de propiedades */
         syncPropsPanel(id);
@@ -456,6 +461,15 @@ function selectNode(id) {
         hidePropsPanel();
     }
 }
+
+// Inicializar el evento del botón upload del panel conceptual
+document.getElementById('ctx-upload-img').addEventListener('click', () => {
+    if (selectedId === 'root') {
+        triggerRootImageUpload();
+    } else if (selectedId) {
+        triggerImageUpload(selectedId);
+    }
+});
 
 /* ═══════════════════════════════════════════════════════
    EDICIÓN INLINE
@@ -584,8 +598,8 @@ function initDrag(id, e) {
 
 /* Click sobre el cuerpo del nodo → seleccionar (y arrastrar en touch) */
 function onNodePointerDown(e) {
-    const skip = ['add-btn', 'del-btn', 'drag-handle', 'node-input', 'caption-input', 'img-placeholder', 'img-change-overlay'];
-    if (skip.some(cls => e.target.classList.contains(cls))) return;
+    const skip = ['.add-btn', '.del-btn', '.drag-handle', '.node-input', '.caption-input'];
+    if (skip.some(sel => e.target.closest(sel))) return;
 
     e.stopPropagation();
     const id = e.currentTarget.dataset.id;
@@ -934,9 +948,13 @@ async function renderMapToCanvas() {
         frameBd: resolveCssColor('--frame-border', '#a4a8c8'),
     };
 
-    // 5. Dibujar aristas (curvas de bezier)
+    // 5. Dibujar aristas
     ctx.lineWidth = 2;
     ctx.strokeStyle = C.edge;
+    
+    // Obtener estilo actual (por defecto 'bezier')
+    const edgeStyle = typeof currentEdgeStyle !== 'undefined' ? currentEdgeStyle : 'bezier';
+    
     for (const [key, path] of Object.entries(edges)) {
         const fromId = path.dataset.from;
         const toId = path.dataset.to;
@@ -947,12 +965,35 @@ async function renderMapToCanvas() {
         const fx = from.x + offX, fy = from.y + offY;
         const tx = to.x + offX, ty = to.y + offY;
         const dx = tx - fx;
-        const cx1 = fx + dx * 0.45;
-        const cx2 = tx - dx * 0.45;
+        const dy = ty - fy;
 
         ctx.beginPath();
-        ctx.moveTo(fx, fy);
-        ctx.bezierCurveTo(cx1, fy, cx2, ty, tx, ty);
+        
+        switch (edgeStyle) {
+            case 'natural':
+                ctx.moveTo(fx, fy);
+                ctx.quadraticCurveTo(fx + dx * 0.7, fy, tx, ty);
+                break;
+            case 'straight':
+                ctx.moveTo(fx, fy);
+                ctx.lineTo(tx, ty);
+                break;
+            case 'stepped':
+                const midX = fx + dx / 2;
+                ctx.moveTo(fx, fy);
+                ctx.lineTo(midX, fy);
+                ctx.lineTo(midX, ty);
+                ctx.lineTo(tx, ty);
+                break;
+            case 'bezier':
+            default:
+                const cx1 = fx + dx * 0.45;
+                const cx2 = tx - dx * 0.45;
+                ctx.moveTo(fx, fy);
+                ctx.bezierCurveTo(cx1, fy, cx2, ty, tx, ty);
+                break;
+        }
+        
         ctx.stroke();
     }
 
