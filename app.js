@@ -84,13 +84,13 @@ function toWorld(sx, sy) {
    CREACIÓN DE NODOS
 ═══════════════════════════════════════════════════════ */
 function createNode({ id, label, x, y, shape = 'circle', parentId = null, imageData = null, rootShape = null, nodeSize = null,
-    nodeColor = null, nodeTextColor = null, nodeBorderColor = null,
+    nodeColor = null, nodeTextColor = null, nodeBorderColor = null, nodeTextBorderColor = null,
     nodeFontSize = null, nodeFontFamily = null,
     nodeFontBold = false, nodeFontItalic = false, nodeFontUnderline = false }) {
     id = id || uid();
     const node = {
         id, label, x, y, shape, parentId, imageData, rootShape, nodeSize,
-        nodeColor, nodeTextColor, nodeBorderColor, nodeFontSize, nodeFontFamily,
+        nodeColor, nodeTextColor, nodeBorderColor, nodeTextBorderColor, nodeFontSize, nodeFontFamily,
         nodeFontBold, nodeFontItalic, nodeFontUnderline
     };
     nodes[id] = node;
@@ -864,7 +864,7 @@ function getNodeSize(node) {
 }
 
 /** Dibuja texto con word-wrap simple centrado en (cx,cy) */
-function drawTextWrapped(ctx, text, cx, cy, maxW, lineH, maxLines) {
+function drawTextWrapped(ctx, text, cx, cy, maxW, lineH, maxLines, strokeColor = 'transparent') {
     const words = (text || '').split(' ');
     const lines = [];
     let cur = '';
@@ -882,6 +882,14 @@ function drawTextWrapped(ctx, text, cx, cy, maxW, lineH, maxLines) {
     const totalH = lines.length * lineH;
     const startY = cy - totalH / 2 + lineH * 0.5;
     lines.forEach((line, i) => {
+        if (strokeColor !== 'transparent') {
+            ctx.save();
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.strokeText(line, cx, startY + i * lineH);
+            ctx.restore();
+        }
         ctx.fillText(line, cx, startY + i * lineH);
     });
 }
@@ -1017,6 +1025,19 @@ async function renderMapToCanvas() {
         let fillColor = node.nodeColor || C.surface;
         let strokeColor = node.nodeBorderColor || C.border;
         let textColor = (node.nodeTextColor || (lblEl && lblEl.style.color)) || C.text;
+        
+        // Determinar edge text color
+        let textBorderColor = 'transparent';
+        if (lblEl && lblEl.style.webkitTextStroke) {
+            let match = lblEl.style.webkitTextStroke.match(/1px\s+(#?[a-zA-Z0-9]+|(?:rgb|hsl)\(.*?\))/);
+            if (match) { textBorderColor = match[1]; }
+            else {
+                match = lblEl.style.webkitTextStroke.match(/(#?[a-zA-Z0-9]+|(?:rgb|hsl)\(.*?\))\s+1px/);
+                if (match) textBorderColor = match[1];
+            }
+        } else if (node.nodeTextBorderColor) {
+            textBorderColor = node.nodeTextBorderColor;
+        }
 
         // Leer colores inline reales del DOM (más fiable)
         if (domEl) {
@@ -1090,10 +1111,10 @@ async function renderMapToCanvas() {
                 ctx.translate(cx, cy);
                 ctx.rotate(Math.PI / 4);
                 ctx.translate(-cx, -cy);
-                drawTextWrapped(ctx, node.label, cx, cy, w * 0.65, fs * 1.35, 3);
+                drawTextWrapped(ctx, node.label, cx, cy, w * 0.65, fs * 1.35, 3, textBorderColor);
                 ctx.restore();
             } else {
-                drawTextWrapped(ctx, node.label, cx, cy, w * 0.8, fs * 1.35, 4);
+                drawTextWrapped(ctx, node.label, cx, cy, w * 0.8, fs * 1.35, 4, textBorderColor);
             }
             ctx.restore();
             continue;
@@ -1133,6 +1154,14 @@ async function renderMapToCanvas() {
             const capFf = node.nodeFontFamily || "Inter, system-ui, sans-serif";
             ctx.font = `500 ${capFs}px ${capFf}`;
             ctx.fillStyle = toCanvasColor(textColor, C.text);
+            if (textBorderColor !== 'transparent') {
+                ctx.save();
+                ctx.strokeStyle = textBorderColor;
+                ctx.lineWidth = 2;
+                ctx.lineJoin = 'round';
+                ctx.strokeText(node.label, cx, cy + h / 2 + 6);
+                ctx.restore();
+            }
             ctx.fillText(node.label, cx, cy + h / 2 + 6);
             ctx.restore();
             continue;
@@ -1170,7 +1199,7 @@ async function renderMapToCanvas() {
             // (simplificado: subrayado post-dibujo no es trivial; se omite pero el texto sí sale)
         }
         const maxTextW = Math.max(w - 20, 20);
-        drawTextWrapped(ctx, node.label, cx, cy, maxTextW, nodeFs * 1.35, 4);
+        drawTextWrapped(ctx, node.label, cx, cy, maxTextW, nodeFs * 1.35, 4, textBorderColor);
         ctx.restore();
     }
 
@@ -2187,6 +2216,11 @@ function applyNodeStyles(el, node) {
         }
     }
     if (node.nodeFontSize && lbl) lbl.style.fontSize = node.nodeFontSize + 'px';
+    if (node.nodeTextBorderColor && lbl) {
+        lbl.style.webkitTextStroke = `1px ${node.nodeTextBorderColor}`;
+    } else if (lbl) {
+        lbl.style.webkitTextStroke = '';
+    }
     if (node.nodeFontFamily && lbl) lbl.style.fontFamily = node.nodeFontFamily;
     if (lbl) {
         lbl.style.fontWeight = node.nodeFontBold ? '700' : '';
@@ -2231,6 +2265,8 @@ const NP_PALETTES = {
         '#1a1a2e', '#4f46e5', '#7c3aed', '#ef4444', '#10b981'],
     text: ['#1a1a1a', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
         '#f59e0b', '#ffffff', '#a0a0a0', '#374151', '#0ea5e9'],
+    'text-border': ['#1a1a1a', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
+        '#f59e0b', '#ffffff', '#a0a0a0', '#374151', 'transparent'],
     border: ['#b0ada8', '#4f46e5', '#7c3aed', '#ef4444', '#10b981',
         '#f59e0b', '#0ea5e9', '#374151', 'transparent', '#1a1a1a'],
 };
@@ -2287,6 +2323,23 @@ function npApplyTextColor(val) {
     if (lbl) lbl.style.color = val;
 }
 
+function npApplyTextBorderColor(val) {
+    if (!selectedId) return;
+    const node = nodes[selectedId];
+    if (!node) return;
+    node.nodeTextBorderColor = val;
+    const el = canvasEl.querySelector(`[data-id="${selectedId}"]`);
+    if (!el) return;
+    const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
+    if (lbl) {
+        if (val === 'transparent') {
+            lbl.style.webkitTextStroke = '';
+        } else {
+            lbl.style.webkitTextStroke = `1px ${val}`;
+        }
+    }
+}
+
 function npApplyBorderColor(val) {
     if (!selectedId) return;
     const node = nodes[selectedId];
@@ -2338,14 +2391,31 @@ function syncPropsPanel(id) {
     const targetEl = isImageNode && el ? (el.querySelector('.img-frame') || el) : el;
     const bgVal = targetEl ? (targetEl.style.background || computedHex(targetEl, 'backgroundColor')) : '#ffffff';
     const textVal = lbl ? (lbl.style.color || computedHex(lbl, 'color')) : '#1a1a1a';
+    
+    // Check if webkitTextStroke is set
+    let textBorderVal = 'transparent';
+    if (lbl && lbl.style.webkitTextStroke) {
+        let match = lbl.style.webkitTextStroke.match(/1px\s+(#?[a-zA-Z0-9]+|(?:rgb|hsl)\(.*?\))/);
+        if (match) {
+            textBorderVal = match[1];
+        } else {
+             match = lbl.style.webkitTextStroke.match(/(#?[a-zA-Z0-9]+|(?:rgb|hsl)\(.*?\))\s+1px/);
+             if (match) textBorderVal = match[1];
+        }
+    } else if (node.nodeTextBorderColor) {
+        textBorderVal = node.nodeTextBorderColor;
+    }
+    
     const borderVal = targetEl ? (targetEl.style.borderColor || computedHex(targetEl, 'borderColor')) : '#b0ada8';
 
     document.getElementById('np-bg-color').value = bgVal.startsWith('#') ? bgVal.substring(0, 7) : '#ffffff';
     document.getElementById('np-text-color').value = textVal.startsWith('#') ? textVal.substring(0, 7) : '#1a1a1a';
+    document.getElementById('np-text-border-color').value = textBorderVal.startsWith('#') ? textBorderVal.substring(0, 7) : '#000000';
     document.getElementById('np-border-color').value = borderVal.startsWith('#') ? borderVal.substring(0, 7) : '#b0ada8';
 
     syncPreview('np-bg-preview', bgVal);
     syncPreview('np-text-preview', textVal);
+    syncPreview('np-text-border-preview', textBorderVal !== 'transparent' ? textBorderVal : '#fff');
     syncPreview('np-border-preview', borderVal);
 
     /* ── Node size ── */
@@ -2387,6 +2457,7 @@ function syncPropsPanel(id) {
 /* ─── Build swatches (only once) ─────────────────────── */
 buildNpSwatches('np-bg-swatches', 'np-bg-color', 'np-bg-preview', npApplyBg);
 buildNpSwatches('np-text-swatches', 'np-text-color', 'np-text-preview', npApplyTextColor);
+buildNpSwatches('np-text-border-swatches', 'np-text-border-color', 'np-text-border-preview', npApplyTextBorderColor);
 buildNpSwatches('np-border-swatches', 'np-border-color', 'np-border-preview', npApplyBorderColor);
 
 /* ─── Color input events ─────────────────────────────── */
@@ -2398,13 +2469,17 @@ document.getElementById('np-text-color').addEventListener('input', e => {
     syncPreview('np-text-preview', e.target.value);
     npApplyTextColor(e.target.value);
 });
+document.getElementById('np-text-border-color').addEventListener('input', e => {
+    syncPreview('np-text-border-preview', e.target.value);
+    npApplyTextBorderColor(e.target.value);
+});
 document.getElementById('np-border-color').addEventListener('input', e => {
     syncPreview('np-border-preview', e.target.value);
     npApplyBorderColor(e.target.value);
 });
 
 /* Click on preview → open native color picker */
-['np-bg-preview', 'np-text-preview', 'np-border-preview'].forEach(pid => {
+['np-bg-preview', 'np-text-preview', 'np-text-border-preview', 'np-border-preview'].forEach(pid => {
     document.getElementById(pid).addEventListener('click', () => {
         const inputId = pid.replace('-preview', '-color');
         const inp = document.getElementById(inputId);
@@ -2462,6 +2537,46 @@ document.getElementById('np-font-family').addEventListener('change', e => {
     if (!el) return;
     const lbl = el.querySelector('.node-label') || el.querySelector('.node-caption');
     if (lbl) lbl.style.fontFamily = ff;
+});
+
+/* ─── Custom Font Uploading ──────────────────────────── */
+const fontFileInput = document.getElementById('font-file-input');
+let customFontCounter = 1;
+
+document.getElementById('btn-upload-font').addEventListener('click', () => {
+    fontFileInput.value = '';
+    fontFileInput.click();
+});
+
+fontFileInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const fontName = 'CustomFont' + (customFontCounter++);
+        
+        // Cargar fuente mediante FontFace API
+        const fontFace = new FontFace(fontName, arrayBuffer);
+        const loadedFont = await fontFace.load();
+        document.fonts.add(loadedFont);
+        
+        // Agregar la fuente al selector
+        const sel = document.getElementById('np-font-family');
+        const opt = document.createElement('option');
+        opt.value = `'${fontName}', sans-serif`;
+        opt.textContent = file.name.split('.')[0] + ` (${fontName})`;
+        sel.appendChild(opt);
+        
+        // Auto-seleccionar y aplicar
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event('change'));
+        
+        toast('🅰️ Fuente cargada correctamente');
+    } catch (err) {
+        console.error(err);
+        toast('❌ Error al cargar la fuente');
+    }
 });
 
 /* ─── Text style toggles ─────────────────────────────── */

@@ -311,6 +311,18 @@
             </div>
         </div>
 
+        <!-- Color de borde del texto -->
+        <div class="np-section" id="np-text-border-section">
+            <span class="np-label">Borde del texto</span>
+            <div class="np-color-row">
+                <label class="np-color-swatch-input" title="Color libre">
+                    <input type="color" id="np-text-border-color" value="#000000">
+                    <span class="np-color-preview" id="np-text-border-preview"></span>
+                </label>
+                <div class="np-swatches" id="np-text-border-swatches"></div>
+            </div>
+        </div>
+
         <!-- Color de borde -->
         <div class="np-section" id="np-border-section">
             <span class="np-label">Color de borde</span>
@@ -354,6 +366,7 @@
                 <option value="'Times New Roman', serif">Times New Roman</option>
                 <option value="'Brush Script MT', cursive">Brush Script</option>
             </select>
+            <button id="btn-upload-font" class="ctx-btn" style="margin-top: 8px; width: 100%;">Subir Fuente Personalizada</button>
         </div>
 
         <!-- Estilo de texto -->
@@ -373,6 +386,7 @@
     <input type="file" id="img-file-input" accept="image/*" style="display:none" aria-hidden="true" />
     <input type="file" id="root-img-file-input" accept="image/*" style="display:none" aria-hidden="true" />
     <input type="file" id="json-file-input" accept=".json" style="display:none" aria-hidden="true" />
+    <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none" aria-hidden="true" />
 
     <!-- ═══════════════════════════════════════
      TOAST & HINT
