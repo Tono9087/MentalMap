@@ -548,7 +548,7 @@ function commitEdit(id) {
     } else {
         const lbl = el.querySelector('.node-label');
         const ta = lbl && lbl.querySelector('.node-input');
-        if (ta) node.label = ta.value.trim() || node.label;
+        if (ta) node.label = ta.value.trim();
         if (lbl) { lbl.innerHTML = ''; lbl.textContent = node.label; }
     }
 }
